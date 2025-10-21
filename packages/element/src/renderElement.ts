@@ -40,6 +40,8 @@ import type {
   InteractiveCanvasRenderConfig,
 } from "@excalidraw/excalidraw/scene/types";
 
+import { parseColorTags, getColorForCharacter } from "./textColorUtils";
+
 import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
 import { getUncroppedImageElement } from "./cropElement";
 import { LinearElementEditor } from "./linearElementEditor";
@@ -507,37 +509,86 @@ const drawElementOnCanvas = (
         context.canvas.setAttribute("dir", rtl ? "rtl" : "ltr");
         context.save();
         context.font = getFontString(element);
-        context.fillStyle = element.strokeColor;
         context.textAlign = element.textAlign as CanvasTextAlign;
 
-        // Canvas does not support multiline text by default
-        const lines = element.text.replace(/\r\n?/g, "\n").split("\n");
-
-        const horizontalOffset =
-          element.textAlign === "center"
-            ? element.width / 2
-            : element.textAlign === "right"
-            ? element.width
-            : 0;
-
-        const lineHeightPx = getLineHeightInPx(
-          element.fontSize,
-          element.lineHeight,
-        );
-
-        const verticalOffset = getVerticalOffset(
-          element.fontFamily,
-          element.fontSize,
-          lineHeightPx,
-        );
-
-        for (let index = 0; index < lines.length; index++) {
-          context.fillText(
-            lines[index],
-            horizontalOffset,
-            index * lineHeightPx + verticalOffset,
+        // Check if element has color spans for multi-color rendering
+        if (element.colorSpans && element.colorSpans.length > 0) {
+          // Multi-color text rendering
+          const lines = element.text.replace(/\r\n?/g, "\n").split("\n");
+          const lineHeightPx = getLineHeightInPx(
+            element.fontSize,
+            element.lineHeight,
           );
+          const verticalOffset = getVerticalOffset(
+            element.fontFamily,
+            element.fontSize,
+            lineHeightPx,
+          );
+
+          let globalCharIndex = 0;
+
+          for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            let currentX =
+              element.textAlign === "center"
+                ? element.width / 2
+                : element.textAlign === "right"
+                ? element.width
+                : 0;
+            const currentY = lineIndex * lineHeightPx + verticalOffset;
+
+            // Render each character with its color
+            for (let charIndex = 0; charIndex < line.length; charIndex++) {
+              const char = line[charIndex];
+              const color = getColorForCharacter(
+                globalCharIndex,
+                element.colorSpans,
+                element.strokeColor,
+              );
+
+              context.fillStyle = color;
+              context.fillText(char, currentX, currentY);
+
+              // Move to next character position
+              const charWidth = context.measureText(char).width;
+              currentX += charWidth;
+              globalCharIndex++;
+            }
+
+            globalCharIndex++; // Account for newline character
+          }
+        } else {
+          // Standard single-color text rendering
+          context.fillStyle = element.strokeColor;
+          const lines = element.text.replace(/\r\n?/g, "\n").split("\n");
+
+          const horizontalOffset =
+            element.textAlign === "center"
+              ? element.width / 2
+              : element.textAlign === "right"
+              ? element.width
+              : 0;
+
+          const lineHeightPx = getLineHeightInPx(
+            element.fontSize,
+            element.lineHeight,
+          );
+
+          const verticalOffset = getVerticalOffset(
+            element.fontFamily,
+            element.fontSize,
+            lineHeightPx,
+          );
+
+          for (let index = 0; index < lines.length; index++) {
+            context.fillText(
+              lines[index],
+              horizontalOffset,
+              index * lineHeightPx + verticalOffset,
+            );
+          }
         }
+
         context.restore();
         if (shouldTemporarilyAttach) {
           context.canvas.remove();

@@ -17,7 +17,7 @@ import {
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
-import { getLineHeightInPx } from "@excalidraw/element";
+import { getLineHeightInPx, getColorForCharacter } from "@excalidraw/element";
 import {
   isArrowElement,
   isIframeLikeElement,
@@ -638,19 +638,68 @@ const renderElementToSvg = (
             : element.textAlign === "right" || direction === "rtl"
             ? "end"
             : "start";
-        for (let i = 0; i < lines.length; i++) {
-          const text = svgRoot.ownerDocument!.createElementNS(SVG_NS, "text");
-          text.textContent = lines[i];
-          text.setAttribute("x", `${horizontalOffset}`);
-          text.setAttribute("y", `${i * lineHeightPx + verticalOffset}`);
-          text.setAttribute("font-family", getFontFamilyString(element));
-          text.setAttribute("font-size", `${element.fontSize}px`);
-          text.setAttribute("fill", element.strokeColor);
-          text.setAttribute("text-anchor", textAnchor);
-          text.setAttribute("style", "white-space: pre;");
-          text.setAttribute("direction", direction);
-          text.setAttribute("dominant-baseline", "alphabetic");
-          node.appendChild(text);
+        // Check if element has color spans for multi-color rendering
+        if (element.colorSpans && element.colorSpans.length > 0) {
+          // Multi-color SVG text rendering
+          let globalCharIndex = 0;
+
+          for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            let currentX = horizontalOffset;
+            const currentY = lineIndex * lineHeightPx + verticalOffset;
+
+            // Create a group for this line
+            const lineGroup = svgRoot.ownerDocument!.createElementNS(SVG_NS, "g");
+
+            // Render each character with its color
+            for (let charIndex = 0; charIndex < line.length; charIndex++) {
+              const char = line[charIndex];
+              const color = getColorForCharacter(
+                globalCharIndex,
+                element.colorSpans,
+                element.strokeColor,
+              );
+
+              const charElement = svgRoot.ownerDocument!.createElementNS(SVG_NS, "text");
+              charElement.textContent = char;
+              charElement.setAttribute("x", `${currentX}`);
+              charElement.setAttribute("y", `${currentY}`);
+              charElement.setAttribute("font-family", getFontFamilyString(element));
+              charElement.setAttribute("font-size", `${element.fontSize}px`);
+              charElement.setAttribute("fill", color);
+              charElement.setAttribute("text-anchor", "start");
+              charElement.setAttribute("style", "white-space: pre;");
+              charElement.setAttribute("direction", direction);
+              charElement.setAttribute("dominant-baseline", "alphabetic");
+
+              lineGroup.appendChild(charElement);
+
+              // Calculate character width for next position
+              // Note: This is an approximation for SVG
+              const charWidth = element.fontSize * 0.6; // Rough estimate
+              currentX += charWidth;
+              globalCharIndex++;
+            }
+
+            node.appendChild(lineGroup);
+            globalCharIndex++; // Account for newline character
+          }
+        } else {
+          // Standard single-color SVG text rendering
+          for (let i = 0; i < lines.length; i++) {
+            const text = svgRoot.ownerDocument!.createElementNS(SVG_NS, "text");
+            text.textContent = lines[i];
+            text.setAttribute("x", `${horizontalOffset}`);
+            text.setAttribute("y", `${i * lineHeightPx + verticalOffset}`);
+            text.setAttribute("font-family", getFontFamilyString(element));
+            text.setAttribute("font-size", `${element.fontSize}px`);
+            text.setAttribute("fill", element.strokeColor);
+            text.setAttribute("text-anchor", textAnchor);
+            text.setAttribute("style", "white-space: pre;");
+            text.setAttribute("direction", direction);
+            text.setAttribute("dominant-baseline", "alphabetic");
+            node.appendChild(text);
+          }
         }
 
         const g = maybeWrapNodesInFrameClipPath(

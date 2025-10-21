@@ -232,6 +232,12 @@ export type NonDeleted<TElement extends ExcalidrawElement> = TElement & {
 
 export type NonDeletedExcalidrawElement = NonDeleted<ExcalidrawElement>;
 
+export interface ColorSpan {
+  start: number;
+  end: number;
+  color: string;
+}
+
 export type ExcalidrawTextElement = _ExcalidrawElementBase &
   Readonly<{
     type: "text";
@@ -254,6 +260,11 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
      *  with font size (using `getLineHeightInPx` helper).
      */
     lineHeight: number & { _brand: "unitlessLineHeight" };
+    /**
+     * Color spans for multi-color text support.
+     * Each span defines a color for a range of characters.
+     */
+    colorSpans?: ColorSpan[];
   }>;
 
 export type ExcalidrawBindableElement =

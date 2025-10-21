@@ -31,6 +31,7 @@ import {
 import { getTextWidth } from "@excalidraw/element";
 import { normalizeText } from "@excalidraw/element";
 import { wrapText } from "@excalidraw/element";
+import { hasColorTags } from "@excalidraw/element";
 import {
   isArrowElement,
   isBoundToContainer,
@@ -148,6 +149,15 @@ export const textWysiwyg = ({
       );
 
       let width = updatedTextElement.width;
+
+      // If text contains color tags, recalculate width based on originalText
+      // to ensure the editor is wide enough for the markup
+      if (updatedTextElement.originalText && hasColorTags(updatedTextElement.originalText)) {
+        const font = getFontString(updatedTextElement);
+        const originalTextWidth = getTextWidth(updatedTextElement.originalText, font);
+        // Use the larger of the two widths to ensure editor fits the content
+        width = Math.max(width, originalTextWidth);
+      }
 
       // set to element height by default since that's
       // what is going to be used for unbounded text

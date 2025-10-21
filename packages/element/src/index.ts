@@ -111,6 +111,7 @@ export * from "./showSelectedShapeActions";
 export * from "./sizeHelpers";
 export * from "./sortElements";
 export * from "./store";
+export * from "./textColorUtils";
 export * from "./textElement";
 export * from "./textMeasurements";
 export * from "./textWrapping";
