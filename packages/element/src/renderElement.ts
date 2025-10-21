@@ -19,6 +19,7 @@ import {
   THEME,
   distance,
   getFontString,
+  getFontFamilyString,
   isRTL,
   getVerticalOffset,
   invariant,
@@ -40,7 +41,7 @@ import type {
   InteractiveCanvasRenderConfig,
 } from "@excalidraw/excalidraw/scene/types";
 
-import { parseColorTags, getColorForCharacter } from "./textColorUtils";
+import { parseStyleTags, getColorForCharacter, getStyleForCharacter } from "./textColorUtils";
 
 import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
 import { getUncroppedImageElement } from "./cropElement";
@@ -511,9 +512,12 @@ const drawElementOnCanvas = (
         context.font = getFontString(element);
         context.textAlign = element.textAlign as CanvasTextAlign;
 
-        // Check if element has color spans for multi-color rendering
-        if (element.colorSpans && element.colorSpans.length > 0) {
-          // Multi-color text rendering
+        // Check if element has styled text for advanced rendering
+        const hasStyledText = (element.colorSpans && element.colorSpans.length > 0) || 
+                             (element.styleSpans && element.styleSpans.length > 0);
+
+        if (hasStyledText) {
+          // Multi-style text rendering
           const lines = element.text.replace(/\r\n?/g, "\n").split("\n");
           const lineHeightPx = getLineHeightInPx(
             element.fontSize,
@@ -537,16 +541,59 @@ const drawElementOnCanvas = (
                 : 0;
             const currentY = lineIndex * lineHeightPx + verticalOffset;
 
-            // Render each character with its color
+            // Render each character with its color and style
             for (let charIndex = 0; charIndex < line.length; charIndex++) {
               const char = line[charIndex];
-              const color = getColorForCharacter(
+              
+              // Get color
+              const color = element.colorSpans ? getColorForCharacter(
                 globalCharIndex,
                 element.colorSpans,
                 element.strokeColor,
-              );
+              ) : element.strokeColor;
 
+              // Get style
+              const style = element.styleSpans ? getStyleForCharacter(
+                globalCharIndex,
+                element.styleSpans,
+              ) : null;
+
+              // Apply font style
+              let fontWeight = "normal";
+              let fontStyle = "normal";
+              
+              if (style) {
+                if (style.bold) fontWeight = "bold";
+                if (style.italic) fontStyle = "italic";
+              }
+              
+              const font = `${fontStyle} ${fontWeight} ${element.fontSize}px ${getFontFamilyString(element)}`;
+              context.font = font;
               context.fillStyle = color;
+
+              // Handle text decorations (underline, strikethrough)
+              if (style && (style.underline || style.strikethrough)) {
+                const charWidth = context.measureText(char).width;
+                
+                if (style.underline) {
+                  context.beginPath();
+                  context.moveTo(currentX, currentY + 2);
+                  context.lineTo(currentX + charWidth, currentY + 2);
+                  context.strokeStyle = color;
+                  context.lineWidth = 1;
+                  context.stroke();
+                }
+                
+                if (style.strikethrough) {
+                  context.beginPath();
+                  context.moveTo(currentX, currentY - element.fontSize * 0.3);
+                  context.lineTo(currentX + charWidth, currentY - element.fontSize * 0.3);
+                  context.strokeStyle = color;
+                  context.lineWidth = 1;
+                  context.stroke();
+                }
+              }
+
               context.fillText(char, currentX, currentY);
 
               // Move to next character position

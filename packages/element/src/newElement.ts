@@ -24,7 +24,7 @@ import { newElementWith } from "./mutateElement";
 import { getBoundTextMaxWidth } from "./textElement";
 import { normalizeText, measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
-import { parseColorTags, hasColorTags } from "./textColorUtils";
+import { parseStyleTags, hasStyleTags } from "./textColorUtils";
 
 import { isLineElement } from "./typeChecks";
 
@@ -254,17 +254,20 @@ export const newTextElement = (
   const fontSize = opts.fontSize || DEFAULT_FONT_SIZE;
   const lineHeight = opts.lineHeight || getLineHeight(fontFamily);
 
-  // Parse color tags if present
+  // Parse style tags if present
   let text: string;
   let colorSpans: ExcalidrawTextElement["colorSpans"];
+  let styleSpans: ExcalidrawTextElement["styleSpans"];
 
-  if (hasColorTags(opts.text)) {
-    const parsed = parseColorTags(opts.text);
+  if (hasStyleTags(opts.text)) {
+    const parsed = parseStyleTags(opts.text);
     text = normalizeText(parsed.cleanText);
     colorSpans = parsed.colorSpans.length > 0 ? parsed.colorSpans : undefined;
+    styleSpans = parsed.styleSpans.length > 0 ? parsed.styleSpans : undefined;
   } else {
     text = normalizeText(opts.text);
     colorSpans = undefined;
+    styleSpans = undefined;
   }
 
   const metrics = measureText(
@@ -295,6 +298,7 @@ export const newTextElement = (
     autoResize: opts.autoResize ?? true,
     lineHeight,
     colorSpans,
+    styleSpans,
   };
 
   const textElement: ExcalidrawTextElement = newElementWith(
@@ -442,17 +446,20 @@ export const refreshTextDimensions = (
     return;
   }
 
-  // Parse color tags if present in originalText
+  // Parse style tags if present in originalText
   let text: string;
   let colorSpans: ExcalidrawTextElement["colorSpans"];
+  let styleSpans: ExcalidrawTextElement["styleSpans"];
 
-  if (hasColorTags(originalText)) {
-    const parsed = parseColorTags(originalText);
+  if (hasStyleTags(originalText)) {
+    const parsed = parseStyleTags(originalText);
     text = normalizeText(parsed.cleanText);
     colorSpans = parsed.colorSpans.length > 0 ? parsed.colorSpans : undefined;
+    styleSpans = parsed.styleSpans.length > 0 ? parsed.styleSpans : undefined;
   } else {
     text = normalizeText(originalText);
     colorSpans = undefined;
+    styleSpans = undefined;
   }
 
   if (container || !textElement.autoResize) {
@@ -465,7 +472,7 @@ export const refreshTextDimensions = (
     );
   }
   const dimensions = getAdjustedDimensions(textElement, elementsMap, text);
-  return { text, colorSpans, ...dimensions };
+  return { text, colorSpans, styleSpans, ...dimensions };
 };
 
 export const newFreeDrawElement = (

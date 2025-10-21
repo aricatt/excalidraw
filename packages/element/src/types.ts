@@ -238,6 +238,15 @@ export interface ColorSpan {
   color: string;
 }
 
+export interface StyleSpan {
+  start: number;
+  end: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+}
+
 export type ExcalidrawTextElement = _ExcalidrawElementBase &
   Readonly<{
     type: "text";
@@ -265,6 +274,7 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
      * Each span defines a color for a range of characters.
      */
     colorSpans?: ColorSpan[];
+    styleSpans?: StyleSpan[];
   }>;
 
 export type ExcalidrawBindableElement =
