@@ -222,10 +222,12 @@ const VoiceInputButton = ({
                                  textEditor.selectionStart;
             const originalText = textEditor.dataset.voiceOriginalText || textEditor.value;
             
-            const newText = originalText.slice(0, startPosition) + 
-                           (originalText && startPosition > 0 ? " " : "") + 
-                           text.trim() + 
-                           originalText.slice(startPosition);
+            // 完全不添加自动空格，让用户自己控制
+            const beforeText = originalText.slice(0, startPosition);
+            const afterText = originalText.slice(startPosition);
+            const voiceText = text.trim();
+            
+            const newText = beforeText + voiceText + afterText;
             
             console.log("🎯 确定最终文本:", `"${originalText}"`, "->", `"${newText}"`);
             
@@ -233,7 +235,7 @@ const VoiceInputButton = ({
             textEditor.value = newText;
             
             // 设置新的光标位置
-            const newCursorPosition = startPosition + (originalText && startPosition > 0 ? 1 : 0) + text.trim().length;
+            const newCursorPosition = startPosition + voiceText.length;
             textEditor.selectionStart = newCursorPosition;
             textEditor.selectionEnd = newCursorPosition;
             
@@ -299,9 +301,8 @@ const VoiceInputButton = ({
           const startPosition = parseInt(textEditor.dataset.voiceStartPosition);
           const originalText = textEditor.dataset.voiceOriginalText || '';
           
-          // 构建临时文本（原文本 + 空格 + 临时识别结果）
+          // 构建临时文本（直接插入，不添加空格）
           const tempText = originalText.slice(0, startPosition) + 
-                          (originalText && startPosition > 0 ? " " : "") + 
                           text.trim() + 
                           originalText.slice(startPosition);
           
@@ -309,7 +310,7 @@ const VoiceInputButton = ({
           textEditor.value = tempText;
           
           // 设置光标位置到临时文本的末尾
-          const tempCursorPosition = startPosition + (originalText && startPosition > 0 ? 1 : 0) + text.trim().length;
+          const tempCursorPosition = startPosition + text.trim().length;
           textEditor.selectionStart = tempCursorPosition;
           textEditor.selectionEnd = tempCursorPosition;
           
