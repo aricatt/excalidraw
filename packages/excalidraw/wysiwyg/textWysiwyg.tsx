@@ -10,8 +10,6 @@ import {
   MIME_TYPES,
 } from "@excalidraw/common";
 
-import React from "react";
-import { createRoot } from "react-dom/client";
 
 import {
   originalContainerCache,
@@ -63,7 +61,6 @@ import {
 
 import type App from "../components/App";
 import type { AppState } from "../types";
-import { VoiceInputForEditor } from "./VoiceInputForEditor";
 
 const getTransform = (
   width: number,
