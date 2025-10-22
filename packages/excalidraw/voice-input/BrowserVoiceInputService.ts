@@ -16,6 +16,9 @@ export class BrowserVoiceInputService implements VoiceInputService {
   private onInterimResultCallback: (text: string) => void = () => {};
   private onErrorCallback: (error: any) => void = () => {};
   private onEndCallback: () => void = () => {};
+  private onRestartCallback: () => void = () => {};
+  private isManualStop: boolean = false;
+  private shouldRestart: boolean = true;
 
   constructor(lang: string = "en-US") {
     if (this.isSupported()) {
@@ -49,7 +52,39 @@ export class BrowserVoiceInputService implements VoiceInputService {
       };
 
       this.recognition.onend = () => {
-        this.onEndCallback();
+        console.log("语音识别结束，是否手动停止:", this.isManualStop);
+        
+        // 如果不是手动停止且应该重启，则自动重新开始
+        if (!this.isManualStop && this.shouldRestart) {
+          console.log("自动重启语音识别...");
+          setTimeout(() => {
+            try {
+              this.recognition.start();
+            } catch (error) {
+              console.error("自动重启语音识别失败:", error);
+              // 重启失败时，继续尝试重启而不是结束
+              if (this.shouldRestart) {
+                console.log("重启失败，1秒后再次尝试...");
+                setTimeout(() => {
+                  try {
+                    this.recognition.start();
+                  } catch (retryError) {
+                    console.error("重试启动失败:", retryError);
+                    // 多次失败后才真正结束
+                    this.onEndCallback();
+                  }
+                }, 1000);
+              } else {
+                this.onEndCallback();
+              }
+            }
+          }, 100); // 短暂延迟避免冲突
+        } else {
+          this.onEndCallback();
+        }
+        
+        // 重置手动停止标志
+        this.isManualStop = false;
       };
     }
   }
@@ -62,6 +97,8 @@ export class BrowserVoiceInputService implements VoiceInputService {
     if (this.isSupported()) {
       try {
         console.log("开始语音识别...");
+        this.isManualStop = false;
+        this.shouldRestart = true;
         this.recognition.start();
       } catch (error) {
         console.error("启动语音识别失败:", error);
@@ -75,6 +112,9 @@ export class BrowserVoiceInputService implements VoiceInputService {
 
   stop(): void {
     if (this.isSupported()) {
+      console.log("手动停止语音识别");
+      this.isManualStop = true;
+      this.shouldRestart = false;
       this.recognition.stop();
     }
   }
@@ -93,5 +133,9 @@ export class BrowserVoiceInputService implements VoiceInputService {
 
   onEnd(callback: () => void): void {
     this.onEndCallback = callback;
+  }
+
+  onRestart(callback: () => void): void {
+    this.onRestartCallback = callback;
   }
 }

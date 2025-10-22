@@ -35,4 +35,9 @@ export interface VoiceInputService {
    * 注册结束回调函数
    */
   onEnd(callback: () => void): void;
+
+  /**
+   * 注册重启回调函数
+   */
+  onRestart?(callback: () => void): void;
 }

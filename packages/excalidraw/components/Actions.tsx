@@ -147,12 +147,25 @@ const VoiceInputButton = ({
   useEffect(() => {
     return () => {
       if (voiceServiceRef.current) {
-        console.log("组件卸载，清理语音服务");
+        console.log("语音组件卸载，清理语音服务");
         voiceServiceRef.current.stop();
         voiceServiceRef.current = null;
       }
     };
   }, []);
+
+  // 监听编辑模式变化，退出编辑模式时停止语音输入
+  useEffect(() => {
+    if (!isInEditMode && isListening) {
+      console.log("退出编辑模式，停止语音输入");
+      if (voiceServiceRef.current) {
+        voiceServiceRef.current.stop();
+        voiceServiceRef.current = null;
+      }
+      setIsListening(false);
+      setError(null);
+    }
+  }, [isInEditMode, isListening]);
 
   const handleVoiceToggle = async () => {
     console.log("🎤 语音按钮被点击，当前状态:", isListening, "编辑模式:", isInEditMode);
@@ -265,7 +278,8 @@ const VoiceInputButton = ({
         }
       }
       
-      setIsListening(false);
+      // 不要在这里重置按钮状态，因为语音识别还在继续
+      // setIsListening(false); // 删除这行
       setError(null);
     });
 
@@ -310,12 +324,20 @@ const VoiceInputButton = ({
 
     voiceServiceRef.current.onError((error: any) => {
       console.error("❌ 语音识别错误:", error);
-      setError("语音识别失败");
-      setIsListening(false);
+      
+      // 只有严重错误才停止语音输入，临时错误不影响按钮状态
+      if (error === "not-allowed" || error === "service-not-allowed") {
+        setError("请允许麦克风权限");
+        setIsListening(false);
+      } else {
+        // 其他错误（如网络错误、超时等）只显示错误信息，不重置按钮状态
+        setError(`语音识别错误: ${error}`);
+        console.log("临时错误，保持语音输入状态");
+      }
     });
 
     voiceServiceRef.current.onEnd(() => {
-      console.log("🔚 语音识别结束");
+      console.log("🔚 语音识别手动结束");
       
       // 清理临时数据
       const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
@@ -324,6 +346,7 @@ const VoiceInputButton = ({
         delete textEditor.dataset.voiceOriginalText;
       }
       
+      // 只有手动停止时才更新UI状态
       setIsListening(false);
     });
 
