@@ -31,6 +31,7 @@ import MultiFontSize from "./MultiFontSize";
 import MultiPosition from "./MultiPosition";
 import Position from "./Position";
 import { getAtomicUnits } from "./utils";
+import { VoiceInput } from "./VoiceInput";
 
 import "./Stats.scss";
 
@@ -238,6 +239,16 @@ export const StatsInner = memo(
             {renderCustomStats?.(elements, appState)}
           </Collapsible>
 
+          {/* 始终显示的语音输入测试 */}
+          <div style={{ marginTop: 12 }}>
+            <VoiceInput
+              elements={selectedElements}
+              scene={scene}
+              elementsMap={elementsMap}
+              appState={appState}
+            />
+          </div>
+
           {!_frameAndChildrenSelectedTogether && selectedElements.length > 0 && (
             <div
               id="elementStats"
@@ -351,6 +362,14 @@ export const StatsInner = memo(
                           appState={appState}
                         />
                       </StatsRow>
+                      <StatsRow>
+                        <VoiceInput
+                          elements={[singleElement]}
+                          scene={scene}
+                          elementsMap={elementsMap}
+                          appState={appState}
+                        />
+                      </StatsRow>
                     </>
                   )}
 
@@ -420,6 +439,14 @@ export const StatsInner = memo(
                           scene={scene}
                           appState={appState}
                           elementsMap={elementsMap}
+                        />
+                      </StatsRow>
+                      <StatsRow>
+                        <VoiceInput
+                          elements={multipleElements}
+                          scene={scene}
+                          elementsMap={elementsMap}
+                          appState={appState}
                         />
                       </StatsRow>
                     </>

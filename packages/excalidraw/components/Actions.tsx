@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import * as Popover from "@radix-ui/react-popover";
 
 import {
@@ -21,6 +21,8 @@ import {
   hasStrokeColor,
   toolIsArrow,
 } from "@excalidraw/element";
+
+import { createVoiceInputService } from "../voice-input/index";
 
 import type {
   ExcalidrawElement,
@@ -127,6 +129,290 @@ export const canChangeBackgroundColor = (
   );
 };
 
+// 语音输入按钮组件
+const VoiceInputButton = ({ 
+  targetElements, 
+  app,
+  isInEditMode
+}: { 
+  targetElements: readonly ExcalidrawElement[];
+  app: AppClassProperties;
+  isInEditMode: boolean;
+}) => {
+  const [isListening, setIsListening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const voiceServiceRef = useRef<any>(null);
+
+  // 组件卸载时清理语音服务
+  useEffect(() => {
+    return () => {
+      if (voiceServiceRef.current) {
+        console.log("组件卸载，清理语音服务");
+        voiceServiceRef.current.stop();
+        voiceServiceRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleVoiceToggle = async () => {
+    console.log("🎤 语音按钮被点击，当前状态:", isListening, "编辑模式:", isInEditMode);
+    
+    // 如果不在编辑模式，不允许使用语音输入
+    if (!isInEditMode) {
+      setError("请先进入文本编辑模式");
+      return;
+    }
+    
+    if (isListening) {
+      // 停止录音
+      if (voiceServiceRef.current) {
+        console.log("停止语音识别");
+        voiceServiceRef.current.stop();
+        // 清理语音服务
+        voiceServiceRef.current = null;
+      }
+      setIsListening(false);
+      return;
+    }
+
+    // 清理之前的服务（如果存在）
+    if (voiceServiceRef.current) {
+      console.log("清理之前的语音服务");
+      voiceServiceRef.current.stop();
+      voiceServiceRef.current = null;
+    }
+
+    // 每次都创建新的语音服务，避免缓存问题
+    console.log("创建新的语音识别服务");
+    voiceServiceRef.current = createVoiceInputService("zh-CN");
+    
+    if (!voiceServiceRef.current.isSupported()) {
+      setError("浏览器不支持语音识别");
+      return;
+    }
+
+    // 设置语音识别回调
+    voiceServiceRef.current.onResult((text: string) => {
+      console.log("🎯 语音识别结果:", text);
+      
+      if (text.trim()) {
+        // 如果在编辑模式，直接更新文本编辑器
+        if (isInEditMode) {
+          console.log("🎯 在编辑模式下，确定最终文本");
+          
+          // 查找当前的文本编辑器
+          const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
+          if (textEditor) {
+            // 使用保存的原始位置和文本，而不是当前的（可能包含临时文本）
+            const startPosition = textEditor.dataset.voiceStartPosition ? 
+                                 parseInt(textEditor.dataset.voiceStartPosition) : 
+                                 textEditor.selectionStart;
+            const originalText = textEditor.dataset.voiceOriginalText || textEditor.value;
+            
+            const newText = originalText.slice(0, startPosition) + 
+                           (originalText && startPosition > 0 ? " " : "") + 
+                           text.trim() + 
+                           originalText.slice(startPosition);
+            
+            console.log("🎯 确定最终文本:", `"${originalText}"`, "->", `"${newText}"`);
+            
+            // 更新编辑器内容（最终版本）
+            textEditor.value = newText;
+            
+            // 设置新的光标位置
+            const newCursorPosition = startPosition + (originalText && startPosition > 0 ? 1 : 0) + text.trim().length;
+            textEditor.selectionStart = newCursorPosition;
+            textEditor.selectionEnd = newCursorPosition;
+            
+            // 清理临时数据
+            delete textEditor.dataset.voiceStartPosition;
+            delete textEditor.dataset.voiceOriginalText;
+            
+            // 触发输入事件，让编辑器知道内容已更改
+            const inputEvent = new Event('input', { bubbles: true });
+            textEditor.dispatchEvent(inputEvent);
+            
+            console.log("✅ 最终文本更新成功");
+          } else {
+            console.log("❌ 没有找到文本编辑器");
+          }
+        } else {
+          // 非编辑模式，更新元素（原来的逻辑）
+          const currentSelectedElements = app.scene.getSelectedElements(app.state);
+          const textElements = currentSelectedElements.filter(isTextElement);
+          console.log("🎯 当前选中的文本元素:", textElements.length);
+          
+          if (textElements.length > 0) {
+            textElements.forEach((element) => {
+              const currentText = element.originalText || element.text || "";
+              const newText = currentText + (currentText ? " " : "") + text.trim();
+              console.log("🎯 更新文本:", `"${currentText}"`, "->", `"${newText}"`);
+              
+              try {
+                app.scene.mutateElement(element, {
+                  originalText: newText,
+                });
+                
+                app.scene.triggerUpdate();
+                console.log("✅ 文本更新成功");
+              } catch (error) {
+                console.error("❌ 文本更新失败:", error);
+              }
+            });
+          } else {
+            console.log("❌ 没有找到选中的文本元素");
+          }
+        }
+      }
+      
+      setIsListening(false);
+      setError(null);
+    });
+
+    voiceServiceRef.current.onInterimResult((text: string) => {
+      console.log("🔄 临时识别结果:", text);
+      
+      // 实时显示临时识别结果
+      if (text.trim() && isInEditMode) {
+        const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
+        if (textEditor) {
+          // 保存当前光标位置（如果还没保存）
+          if (!textEditor.dataset.voiceStartPosition) {
+            textEditor.dataset.voiceStartPosition = textEditor.selectionStart.toString();
+            textEditor.dataset.voiceOriginalText = textEditor.value;
+          }
+          
+          const startPosition = parseInt(textEditor.dataset.voiceStartPosition);
+          const originalText = textEditor.dataset.voiceOriginalText || '';
+          
+          // 构建临时文本（原文本 + 空格 + 临时识别结果）
+          const tempText = originalText.slice(0, startPosition) + 
+                          (originalText && startPosition > 0 ? " " : "") + 
+                          text.trim() + 
+                          originalText.slice(startPosition);
+          
+          // 更新编辑器内容（临时）
+          textEditor.value = tempText;
+          
+          // 设置光标位置到临时文本的末尾
+          const tempCursorPosition = startPosition + (originalText && startPosition > 0 ? 1 : 0) + text.trim().length;
+          textEditor.selectionStart = tempCursorPosition;
+          textEditor.selectionEnd = tempCursorPosition;
+          
+          // 触发输入事件，让编辑器重新计算尺寸
+          const inputEvent = new Event('input', { bubbles: true });
+          textEditor.dispatchEvent(inputEvent);
+          
+          console.log("🔄 实时更新临时文本:", text.trim());
+        }
+      }
+    });
+
+    voiceServiceRef.current.onError((error: any) => {
+      console.error("❌ 语音识别错误:", error);
+      setError("语音识别失败");
+      setIsListening(false);
+    });
+
+    voiceServiceRef.current.onEnd(() => {
+      console.log("🔚 语音识别结束");
+      
+      // 清理临时数据
+      const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
+      if (textEditor) {
+        delete textEditor.dataset.voiceStartPosition;
+        delete textEditor.dataset.voiceOriginalText;
+      }
+      
+      setIsListening(false);
+    });
+
+    // 开始语音识别
+    try {
+      // 检查麦克风权限
+      const permission = await navigator.permissions.query({ 
+        name: "microphone" as PermissionName 
+      });
+      
+      if (permission.state === "denied") {
+        setError("请允许麦克风权限");
+        return;
+      }
+      
+      setError(null);
+      setIsListening(true);
+      console.log("🎤 开始语音识别");
+      voiceServiceRef.current.start();
+    } catch (error) {
+      console.error("❌ 启动语音识别失败:", error);
+      setError("启动失败");
+      setIsListening(false);
+    }
+  };
+
+  return (
+    <div style={{ 
+      padding: "4px", 
+      backgroundColor: isListening ? "#fef2f2" : "#f9fafb", 
+      border: `1px solid ${isListening ? "#ef4444" : "#d1d5db"}`, 
+      borderRadius: "4px",
+      margin: "4px 0"
+    }}>
+      <button
+        onClick={handleVoiceToggle}
+        disabled={!isInEditMode && !isListening}
+        style={{
+          background: isListening 
+            ? "#ef4444" 
+            : isInEditMode 
+              ? "#6b7280" 
+              : "#9ca3af",
+          color: "white",
+          border: "none",
+          borderRadius: "4px",
+          padding: "6px 10px",
+          fontSize: "12px",
+          cursor: isInEditMode || isListening ? "pointer" : "not-allowed",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          width: "100%",
+          justifyContent: "center",
+          opacity: isInEditMode || isListening ? 1 : 0.6,
+        }}
+        title={
+          isListening 
+            ? "点击停止语音输入" 
+            : isInEditMode 
+              ? "点击开始语音输入" 
+              : "请先进入文本编辑模式"
+        }
+      >
+        🎤
+        <span>
+          {isListening 
+            ? "停止录音" 
+            : isInEditMode 
+              ? "语音输入" 
+              : "语音输入(禁用)"
+          }
+        </span>
+      </button>
+      
+      {error && (
+        <div style={{ 
+          fontSize: "10px", 
+          color: "#ef4444", 
+          marginTop: "2px", 
+          textAlign: "center" 
+        }}>
+          {error}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const SelectedShapeActions = ({
   appState,
   elementsMap,
@@ -224,6 +510,13 @@ export const SelectedShapeActions = ({
           {(appState.activeTool.type === "text" ||
             suppportsHorizontalAlign(targetElements, elementsMap)) &&
             renderAction("changeTextAlign")}
+          
+          {/* 语音输入按钮 - 只在有文本元素时显示 */}
+          <VoiceInputButton 
+            targetElements={targetElements}
+            app={app}
+            isInEditMode={appState.editingTextElement !== null}
+          />
         </>
       )}
 

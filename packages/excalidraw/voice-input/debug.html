@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>语音识别测试</title>
+</head>
+<body>
+    <h1>语音识别功能测试</h1>
+    <button id="testBtn">🎤 测试语音识别</button>
+    <div id="status"></div>
+    <div id="result"></div>
+
+    <script>
+        const testBtn = document.getElementById('testBtn');
+        const status = document.getElementById('status');
+        const result = document.getElementById('result');
+
+        // 检查浏览器支持
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            status.innerHTML = '❌ 浏览器不支持语音识别';
+            testBtn.disabled = true;
+        } else {
+            status.innerHTML = '✅ 浏览器支持语音识别';
+        }
+
+        let recognition = null;
+        let isListening = false;
+
+        testBtn.addEventListener('click', () => {
+            if (!isListening) {
+                // 开始语音识别
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'zh-CN';
+
+                recognition.onstart = () => {
+                    isListening = true;
+                    testBtn.style.color = '#ef4444';
+                    status.innerHTML = '🔴 正在监听...';
+                };
+
+                recognition.onresult = (event) => {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+
+                    result.innerHTML = `
+                        <p><strong>最终结果:</strong> ${finalTranscript}</p>
+                        <p><strong>临时结果:</strong> ${interimTranscript}</p>
+                    `;
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('语音识别错误:', event.error);
+                    status.innerHTML = `❌ 错误: ${event.error}`;
+                    isListening = false;
+                    testBtn.style.color = '#6b7280';
+                };
+
+                recognition.onend = () => {
+                    isListening = false;
+                    testBtn.style.color = '#6b7280';
+                    status.innerHTML = '⏹️ 语音识别结束';
+                };
+
+                recognition.start();
+            } else {
+                // 停止语音识别
+                recognition.stop();
+            }
+        });
+    </script>
+</body>
+</html>

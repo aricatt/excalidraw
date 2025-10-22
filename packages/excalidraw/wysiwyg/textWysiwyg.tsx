@@ -10,6 +10,9 @@ import {
   MIME_TYPES,
 } from "@excalidraw/common";
 
+import React from "react";
+import { createRoot } from "react-dom/client";
+
 import {
   originalContainerCache,
   updateOriginalContainerCache,
@@ -60,6 +63,7 @@ import {
 
 import type App from "../components/App";
 import type { AppState } from "../types";
+import { VoiceInputForEditor } from "./VoiceInputForEditor";
 
 const getTransform = (
   width: number,
@@ -287,12 +291,12 @@ export const textWysiwyg = ({
   };
 
   const editable = document.createElement("textarea");
-
   editable.dir = "auto";
   editable.tabIndex = 0;
-  editable.dataset.type = "wysiwyg";
   // prevent line wrapping on Safari
-  editable.wrap = "off";
+  editable.setAttribute("wrap", "off");
+
+
   editable.classList.add("excalidraw-wysiwyg");
 
   let whiteSpace = "pre";
@@ -606,6 +610,7 @@ export const textWysiwyg = ({
     unbindUpdate();
     unbindOnScroll();
 
+
     editable.remove();
   };
 
@@ -747,10 +752,11 @@ export const textWysiwyg = ({
   requestAnimationFrame(() => {
     window.addEventListener("pointerdown", onPointerDown, { capture: true });
   });
+
   window.addEventListener("beforeunload", handleSubmit);
-  excalidrawContainer
-    ?.querySelector(".excalidraw-textEditorContainer")!
-    .appendChild(editable);
+  
+  const textEditorContainer = excalidrawContainer?.querySelector(".excalidraw-textEditorContainer")!;
+  textEditorContainer.appendChild(editable);
 
   return handleSubmit;
 };
