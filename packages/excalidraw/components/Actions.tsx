@@ -141,15 +141,21 @@ const VoiceInputButton = ({
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number>(0);
   const voiceServiceRef = useRef<any>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 组件卸载时清理语音服务
+  // 组件卸载时清理语音服务和倒计时
   useEffect(() => {
     return () => {
       if (voiceServiceRef.current) {
         console.log("语音组件卸载，清理语音服务");
         voiceServiceRef.current.stop();
         voiceServiceRef.current = null;
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
       }
     };
   }, []);
@@ -162,10 +168,51 @@ const VoiceInputButton = ({
         voiceServiceRef.current.stop();
         voiceServiceRef.current = null;
       }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
       setIsListening(false);
       setError(null);
+      setCountdown(0);
     }
   }, [isInEditMode, isListening]);
+
+  // 启动倒计时
+  const startCountdown = () => {
+    setCountdown(30);
+    countdownTimerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          // 倒计时结束，自动停止录音
+          console.log("⏰ 倒计时结束，自动停止录音");
+          handleStopRecording();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // 停止倒计时
+  const stopCountdown = () => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setCountdown(0);
+  };
+
+  // 停止录音的通用函数
+  const handleStopRecording = () => {
+    if (voiceServiceRef.current) {
+      console.log("停止语音识别");
+      voiceServiceRef.current.stop();
+      voiceServiceRef.current = null;
+    }
+    setIsListening(false);
+    stopCountdown();
+  };
 
   const handleVoiceToggle = async () => {
     console.log("🎤 语音按钮被点击，当前状态:", isListening, "编辑模式:", isInEditMode);
@@ -178,13 +225,7 @@ const VoiceInputButton = ({
     
     if (isListening) {
       // 停止录音
-      if (voiceServiceRef.current) {
-        console.log("停止语音识别");
-        voiceServiceRef.current.stop();
-        // 清理语音服务
-        voiceServiceRef.current = null;
-      }
-      setIsListening(false);
+      handleStopRecording();
       return;
     }
 
@@ -286,7 +327,7 @@ const VoiceInputButton = ({
     });
 
     voiceServiceRef.current.onInterimResult((text: string) => {
-      console.log("🔄 临时识别结果:", text);
+      // console.log("🔄 临时识别结果:", text);
       
       // 实时显示临时识别结果
       if (text.trim() && isInEditMode) {
@@ -318,7 +359,7 @@ const VoiceInputButton = ({
           const inputEvent = new Event('input', { bubbles: true });
           textEditor.dispatchEvent(inputEvent);
           
-          console.log("🔄 实时更新临时文本:", text.trim());
+          //console.log("🔄 实时更新临时文本:", text.trim());
         }
       }
     });
@@ -367,6 +408,9 @@ const VoiceInputButton = ({
       setIsListening(true);
       console.log("🎤 开始语音识别");
       voiceServiceRef.current.start();
+      
+      // 启动30秒倒计时
+      startCountdown();
     } catch (error) {
       console.error("❌ 启动语音识别失败:", error);
       setError("启动失败");
@@ -415,7 +459,7 @@ const VoiceInputButton = ({
         🎤
         <span>
           {isListening 
-            ? "停止录音" 
+            ? `停止录音 (${countdown}s)` 
             : isInEditMode 
               ? "语音输入" 
               : "语音输入(禁用)"
