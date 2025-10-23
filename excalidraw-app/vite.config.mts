@@ -14,9 +14,14 @@ export default defineConfig(({ mode }) => {
   // https://vitejs.dev/config/
   return {
     server: {
+      host: "0.0.0.0", // 允许外部访问
       port: Number(envVars.VITE_APP_PORT || 3000),
       // open the browser
       open: true,
+      https: {
+        key: "../certs/server.key",
+        cert: "../certs/server.crt",
+      },
     },
     // We need to specify the envDir since now there are no
     //more located in parallel with the vite.config.ts file but in parent dir
