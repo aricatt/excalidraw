@@ -15,8 +15,9 @@ const isValidHexColor = (color: string): boolean => {
 
 /**
  * 解析包含样式标记的文本，支持嵌套标签
- * 支持格式: <color=#FF6B35>文字</color>, <b>粗体</b>, <i>斜体</i>, <u>下划线</u>, <s>删除线</s>
+ * 支持格式: <c=#FF6B35>文字</c>, <b>粗体</b>, <i>斜体</i>, <u>下划线</u>, <s>删除线</s>
  * 支持嵌套: <i><b>粗体斜体</b>普通斜体</i>
+ * 注意: 同时支持 <color=#FF6B35>文字</color> 语法以保持向后兼容
  */
 export const parseStyleTags = (text: string): ParsedText => {
   const colorSpans: ColorSpan[] = [];
@@ -32,6 +33,7 @@ export const parseStyleTags = (text: string): ParsedText => {
 
     // 定义标签模式，按优先级排序（从外到内）
     const tagPatterns = [
+      { regex: /<c=(#[0-9A-Fa-f]{6})>(.*?)<\/c>/s, type: "color" },
       { regex: /<color=(#[0-9A-Fa-f]{6})>(.*?)<\/color>/s, type: "color" },
       { regex: /<b>(.*?)<\/b>/s, type: "bold" },
       { regex: /<i>(.*?)<\/i>/s, type: "italic" },
@@ -231,7 +233,9 @@ export const colorSpansToMarkup = (
  * 检查文本是否包含样式标记
  */
 export const hasStyleTags = (text: string): boolean => {
-  return /<(color=#[0-9A-Fa-f]{6}|b|i|u|s)>.*?<\/(color|b|i|u|s)>/.test(text);
+  return /<(c=#[0-9A-Fa-f]{6}|color=#[0-9A-Fa-f]{6}|b|i|u|s)>.*?<\/(c|color|b|i|u|s)>/.test(
+    text,
+  );
 };
 
 // 保持向后兼容性
