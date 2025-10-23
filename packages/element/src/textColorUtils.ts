@@ -14,122 +14,142 @@ const isValidHexColor = (color: string): boolean => {
 };
 
 /**
- * 解析包含样式标记的文本
+ * 解析包含样式标记的文本，支持嵌套标签
  * 支持格式: <color=#FF6B35>文字</color>, <b>粗体</b>, <i>斜体</i>, <u>下划线</u>, <s>删除线</s>
+ * 支持嵌套: <i><b>粗体斜体</b>普通斜体</i>
  */
 export const parseStyleTags = (text: string): ParsedText => {
   const colorSpans: ColorSpan[] = [];
   const styleSpans: StyleSpan[] = [];
-  let cleanText = text;
-  let totalOffset = 0;
 
-  // 定义所有支持的标记类型
-  const tagPatterns = [
-    { regex: /<color=(#[0-9A-Fa-f]{6})>(.*?)<\/color>/g, type: 'color' },
-    { regex: /<b>(.*?)<\/b>/g, type: 'bold' },
-    { regex: /<i>(.*?)<\/i>/g, type: 'italic' },
-    { regex: /<u>(.*?)<\/u>/g, type: 'underline' },
-    { regex: /<s>(.*?)<\/s>/g, type: 'strikethrough' },
-  ];
+  // 递归解析函数
+  const parseRecursive = (
+    input: string,
+    baseOffset: number = 0,
+    inheritedStyles: Partial<StyleSpan> = {},
+  ): string => {
+    const result = input;
 
-  // 收集所有匹配项
-  const allMatches: Array<{
-    match: RegExpExecArray;
-    type: string;
-    index: number;
-    fullMatch: string;
-    content: string;
-    colorValue?: string;
-  }> = [];
+    // 定义标签模式，按优先级排序（从外到内）
+    const tagPatterns = [
+      { regex: /<color=(#[0-9A-Fa-f]{6})>(.*?)<\/color>/s, type: "color" },
+      { regex: /<b>(.*?)<\/b>/s, type: "bold" },
+      { regex: /<i>(.*?)<\/i>/s, type: "italic" },
+      { regex: /<u>(.*?)<\/u>/s, type: "underline" },
+      { regex: /<s>(.*?)<\/s>/s, type: "strikethrough" },
+    ];
 
-  tagPatterns.forEach(({ regex, type }) => {
-    let match;
-    regex.lastIndex = 0; // 重置正则表达式状态
-    
-    while ((match = regex.exec(text)) !== null) {
-      const [fullMatch, param, content] = match;
-      allMatches.push({
-        match,
-        type,
-        index: match.index,
-        fullMatch,
-        content: content || param, // 对于颜色标记，content 在第二个参数
-        colorValue: type === 'color' ? param : undefined,
-      });
-    }
-  });
+    // 查找第一个匹配的标签
+    let earliestMatch: {
+      match: RegExpExecArray;
+      type: string;
+      index: number;
+      colorValue?: string;
+    } | null = null;
 
-  // 按出现位置排序
-  allMatches.sort((a, b) => a.index - b.index);
-
-  // 处理每个匹配项
-  for (const item of allMatches) {
-    const adjustedStart = item.index - totalOffset;
-    const adjustedEnd = adjustedStart + item.content.length;
-
-    if (item.type === 'color' && item.colorValue) {
-      // 验证颜色值
-      if (isValidHexColor(item.colorValue)) {
-        colorSpans.push({
-          start: adjustedStart,
-          end: adjustedEnd,
-          color: item.colorValue.toUpperCase(),
-        });
-      } else {
-        console.warn(`Invalid hex color: ${item.colorValue}`);
+    for (const { regex, type } of tagPatterns) {
+      regex.lastIndex = 0;
+      const match = regex.exec(result);
+      if (match && (!earliestMatch || match.index < earliestMatch.index)) {
+        earliestMatch = {
+          match,
+          type,
+          index: match.index,
+          colorValue: type === "color" ? match[1] : undefined,
+        };
       }
-    } else {
-      // 样式标记
-      const existingSpan = styleSpans.find(
-        span => span.start === adjustedStart && span.end === adjustedEnd
+    }
+
+    // 如果没有找到标签，返回原文本
+    if (!earliestMatch) {
+      return result;
+    }
+
+    const { match, type, colorValue } = earliestMatch;
+    const [fullMatch] = match;
+
+    // 根据标签类型获取正确的内容
+    const content = type === "color" ? match[2] : match[1];
+
+    const matchStart = match.index;
+    const matchEnd = matchStart + fullMatch.length;
+
+    // 处理匹配前的文本
+    const beforeText = result.slice(0, matchStart);
+    const afterText = result.slice(matchEnd);
+
+    // 递归处理标签内容，传递继承的样式
+    const newInheritedStyles = { ...inheritedStyles };
+    if (type === "bold") {
+      newInheritedStyles.bold = true;
+    }
+    if (type === "italic") {
+      newInheritedStyles.italic = true;
+    }
+    if (type === "underline") {
+      newInheritedStyles.underline = true;
+    }
+    if (type === "strikethrough") {
+      newInheritedStyles.strikethrough = true;
+    }
+
+    const processedContent = parseRecursive(
+      content || "",
+      baseOffset + matchStart,
+      newInheritedStyles,
+    );
+
+    // 计算在最终文本中的位置
+    const finalStart = baseOffset + matchStart;
+    const finalEnd = finalStart + processedContent.length;
+
+    // 添加样式信息
+    if (type === "color" && colorValue && isValidHexColor(colorValue)) {
+      colorSpans.push({
+        start: finalStart,
+        end: finalEnd,
+        color: colorValue.toUpperCase(),
+      });
+    } else if (type !== "color") {
+      // 查找是否已有相同位置的样式范围
+      let existingSpan = styleSpans.find(
+        (span) => span.start === finalStart && span.end === finalEnd,
       );
 
-      if (existingSpan) {
-        // 合并到现有的样式范围
-        switch (item.type) {
-          case 'bold':
-            existingSpan.bold = true;
-            break;
-          case 'italic':
-            existingSpan.italic = true;
-            break;
-          case 'underline':
-            existingSpan.underline = true;
-            break;
-          case 'strikethrough':
-            existingSpan.strikethrough = true;
-            break;
-        }
-      } else {
-        // 创建新的样式范围
-        const newSpan: StyleSpan = {
-          start: adjustedStart,
-          end: adjustedEnd,
+      if (!existingSpan) {
+        existingSpan = {
+          start: finalStart,
+          end: finalEnd,
+          ...inheritedStyles, // 继承外层样式
         };
+        styleSpans.push(existingSpan);
+      }
 
-        switch (item.type) {
-          case 'bold':
-            newSpan.bold = true;
-            break;
-          case 'italic':
-            newSpan.italic = true;
-            break;
-          case 'underline':
-            newSpan.underline = true;
-            break;
-          case 'strikethrough':
-            newSpan.strikethrough = true;
-            break;
-        }
-
-        styleSpans.push(newSpan);
+      // 添加当前标签的样式
+      switch (type) {
+        case "bold":
+          existingSpan.bold = true;
+          break;
+        case "italic":
+          existingSpan.italic = true;
+          break;
+        case "underline":
+          existingSpan.underline = true;
+          break;
+        case "strikethrough":
+          existingSpan.strikethrough = true;
+          break;
       }
     }
 
-    // 从文本中移除标记，保留内容
-    cleanText = cleanText.replace(item.fullMatch, item.content);
-    totalOffset += item.fullMatch.length - item.content.length;
-  }
+    // 构建新的文本（移除当前标签，保留内容）
+    const newResult = beforeText + processedContent + afterText;
+
+    // 递归处理剩余的标签
+    return parseRecursive(newResult, baseOffset, inheritedStyles);
+  };
+
+  const cleanText = parseRecursive(text);
 
   // 按起始位置排序
   colorSpans.sort((a, b) => a.start - b.start);
