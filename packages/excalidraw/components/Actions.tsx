@@ -22,7 +22,11 @@ import {
   toolIsArrow,
 } from "@excalidraw/element";
 
-import { createVoiceInputService } from "../voice-input/index";
+import { 
+  createVoiceInputService, 
+  type VoiceServiceProvider,
+  type VoiceServiceConfig 
+} from "../voice-input/index";
 
 import type {
   ExcalidrawElement,
@@ -142,6 +146,7 @@ const VoiceInputButton = ({
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
+  const [voiceProvider, setVoiceProvider] = useState<VoiceServiceProvider>("aliyun");
   const voiceServiceRef = useRef<any>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -237,8 +242,12 @@ const VoiceInputButton = ({
     }
 
     // 每次都创建新的语音服务，避免缓存问题
-    console.log("创建新的语音识别服务");
-    voiceServiceRef.current = createVoiceInputService("zh-CN");
+    console.log("创建新的语音识别服务，提供商:", voiceProvider);
+    voiceServiceRef.current = createVoiceInputService({
+      provider: voiceProvider,
+      lang: "zh-CN",
+      backendUrl: "https://192.168.31.244:4408" // 手动指定HTTPS后端URL
+    });
     
     if (!voiceServiceRef.current.isSupported()) {
       setError("浏览器不支持语音识别");
@@ -426,6 +435,35 @@ const VoiceInputButton = ({
       borderRadius: "4px",
       margin: "4px 0"
     }}>
+      {/* 语音服务提供商选择器 */}
+      <div style={{ marginBottom: "8px" }}>
+        <label style={{ 
+          fontSize: "10px", 
+          color: "#6b7280", 
+          display: "block", 
+          marginBottom: "2px" 
+        }}>
+          语音服务:
+        </label>
+        <select
+          value={voiceProvider}
+          onChange={(e) => setVoiceProvider(e.target.value as VoiceServiceProvider)}
+          disabled={isListening}
+          style={{
+            width: "100%",
+            padding: "2px 4px",
+            fontSize: "10px",
+            border: "1px solid #d1d5db",
+            borderRadius: "2px",
+            backgroundColor: isListening ? "#f3f4f6" : "white",
+            cursor: isListening ? "not-allowed" : "pointer"
+          }}
+        >
+          <option value="aliyun">阿里云 (更准确)</option>
+          <option value="browser">浏览器原生 (免费)</option>
+        </select>
+      </div>
+      
       <button
         onClick={handleVoiceToggle}
         disabled={!isInEditMode && !isListening}
