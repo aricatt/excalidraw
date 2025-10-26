@@ -107,6 +107,8 @@ const formatLongSentence = (text: string): string => {
   let result = "";
   let charCount = 0;
   
+  console.log("📝 格式化长句子:", `"${text}"`);
+  
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
     result += char;
@@ -116,9 +118,11 @@ const formatLongSentence = (text: string): string => {
     if ((char === "，" || char === ",") && charCount >= 30) {
       result += "\n";
       charCount = 0; // 重置计数器
+      console.log("📝 在位置", i, "添加换行，字符:", char);
     }
   }
   
+  console.log("📝 格式化结果:", `"${result}"`);
   return result;
 };
 
@@ -350,6 +354,7 @@ const VoiceInputButton = ({
           const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
           if (textEditor) {
             let voiceText = text.trim();
+            console.log("🎤 原始语音文本:", `"${voiceText}"`, "长度:", voiceText.length);
             
             // 对长句子进行自动换行处理：每30个字符后的逗号后添加换行
             voiceText = formatLongSentence(voiceText);
@@ -360,6 +365,7 @@ const VoiceInputButton = ({
             
             // 检查语音文本是否以句子结束符结尾
             const isCompleteSentence = /[。！？.!?]$/.test(voiceText);
+            console.log("🔍 完整句子检测:", `"${voiceText}"`, "→", isCompleteSentence, "最后字符码:", voiceText.charCodeAt(voiceText.length - 1));
             
             // 检查是否需要添加分隔符
             const needSeparator = currentPosition > 0 && 
@@ -381,7 +387,8 @@ const VoiceInputButton = ({
             
             console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition, 
                        isCompleteSentence ? "(完整句子，添加换行)" : "(非完整句子)",
-                       voiceText.includes('\n') ? "(包含长句换行)" : "");
+                       voiceText.includes('\n') ? "(包含长句换行)" : "",
+                       "最后字符:", voiceText.slice(-1));
             
             // 更新编辑器内容
             textEditor.value = newText;
