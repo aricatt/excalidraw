@@ -254,42 +254,45 @@ const VoiceInputButton = ({
       return;
     }
 
-    // 设置语音识别回调
+    // 设置语音识别回调 - 处理最终确认的句子
     voiceServiceRef.current.onResult((text: string) => {
-      console.log("🎯 语音识别结果:", text);
+      console.log("🎯 语音识别最终结果:", text);
       
       if (text.trim()) {
-        // 如果在编辑模式，直接更新文本编辑器
+        // 如果在编辑模式，追加文本到编辑器
         if (isInEditMode) {
-          console.log("🎯 在编辑模式下，确定最终文本");
+          console.log("🎯 在编辑模式下，追加最终句子");
           
           // 查找当前的文本编辑器
           const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
           if (textEditor) {
-            // 使用保存的原始位置和文本，而不是当前的（可能包含临时文本）
-            const startPosition = textEditor.dataset.voiceStartPosition ? 
-                                 parseInt(textEditor.dataset.voiceStartPosition) : 
-                                 textEditor.selectionStart;
-            const originalText = textEditor.dataset.voiceOriginalText || textEditor.value;
-            
-            // 完全不添加自动空格，让用户自己控制
-            const beforeText = originalText.slice(0, startPosition);
-            const afterText = originalText.slice(startPosition);
             const voiceText = text.trim();
             
-            const newText = beforeText + voiceText + afterText;
+            // 获取当前光标位置，在此位置追加新句子
+            const currentPosition = textEditor.selectionStart;
+            const currentText = textEditor.value;
             
-            console.log("🎯 确定最终文本:", `"${originalText}"`, "->", `"${newText}"`);
+            // 检查是否需要添加空格分隔
+            const needSpace = currentPosition > 0 && 
+                             currentText[currentPosition - 1] !== ' ' && 
+                             currentText[currentPosition - 1] !== '\n';
             
-            // 更新编辑器内容（最终版本）
+            const separator = needSpace ? ' ' : '';
+            const beforeText = currentText.slice(0, currentPosition);
+            const afterText = currentText.slice(currentPosition);
+            const newText = beforeText + separator + voiceText + afterText;
+            
+            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition);
+            
+            // 更新编辑器内容
             textEditor.value = newText;
             
-            // 设置新的光标位置
-            const newCursorPosition = startPosition + voiceText.length;
+            // 设置新的光标位置到追加文本的末尾
+            const newCursorPosition = currentPosition + separator.length + voiceText.length;
             textEditor.selectionStart = newCursorPosition;
             textEditor.selectionEnd = newCursorPosition;
             
-            // 清理临时数据
+            // 清理任何临时数据
             delete textEditor.dataset.voiceStartPosition;
             delete textEditor.dataset.voiceOriginalText;
             
@@ -336,40 +339,17 @@ const VoiceInputButton = ({
     });
 
     voiceServiceRef.current.onInterimResult((text: string) => {
-      // console.log("🔄 临时识别结果:", text);
+      console.log("🔄 临时识别结果:", text);
       
-      // 实时显示临时识别结果
-      if (text.trim() && isInEditMode) {
-        const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
-        if (textEditor) {
-          // 保存当前光标位置（如果还没保存）
-          if (!textEditor.dataset.voiceStartPosition) {
-            textEditor.dataset.voiceStartPosition = textEditor.selectionStart.toString();
-            textEditor.dataset.voiceOriginalText = textEditor.value;
-          }
-          
-          const startPosition = parseInt(textEditor.dataset.voiceStartPosition);
-          const originalText = textEditor.dataset.voiceOriginalText || '';
-          
-          // 构建临时文本（直接插入，不添加空格）
-          const tempText = originalText.slice(0, startPosition) + 
-                          text.trim() + 
-                          originalText.slice(startPosition);
-          
-          // 更新编辑器内容（临时）
-          textEditor.value = tempText;
-          
-          // 设置光标位置到临时文本的末尾
-          const tempCursorPosition = startPosition + text.trim().length;
-          textEditor.selectionStart = tempCursorPosition;
-          textEditor.selectionEnd = tempCursorPosition;
-          
-          // 触发输入事件，让编辑器重新计算尺寸
-          const inputEvent = new Event('input', { bubbles: true });
-          textEditor.dispatchEvent(inputEvent);
-          
-          //console.log("🔄 实时更新临时文本:", text.trim());
-        }
+      // 对于阿里云的句子级识别，临时结果只用于显示反馈，不修改文本
+      // 因为阿里云会在句子完成时发送最终结果，我们只在那时追加文本
+      
+      // 这里可以添加视觉反馈，比如显示当前正在识别的内容
+      // 但不直接修改文本编辑器，避免与最终结果冲突
+      
+      if (text.trim()) {
+        // 可以在这里添加临时的视觉提示，比如在UI上显示"正在识别: xxx"
+        console.log("🔄 正在识别句子:", text.trim());
       }
     });
 

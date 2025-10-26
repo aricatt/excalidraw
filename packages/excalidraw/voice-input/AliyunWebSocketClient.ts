@@ -76,12 +76,19 @@ export class AliyunWebSocketClient {
                 break;
 
               case "result-generated":
-                console.log("收到识别结果");
+                console.log("收到识别结果:", message.payload?.output?.sentence);
                 if (message.payload?.output?.sentence?.text) {
+                  // 检查是否是最终结果
+                  // 阿里云会在sentence对象中提供end_time来标识句子是否结束
+                  const sentence = message.payload.output.sentence;
+                  const isFinal = sentence.end_time !== undefined && sentence.end_time > 0;
+                  
                   const result: AliyunRecognitionResult = {
-                    text: message.payload.output.sentence.text,
-                    isFinal: true, // 阿里云的结果通常都是最终结果
+                    text: sentence.text,
+                    isFinal: isFinal,
                   };
+                  
+                  console.log(`识别结果类型: ${isFinal ? '最终' : '临时'}, 内容: "${sentence.text}"`);
                   this.onResultCallback(result);
                 }
                 break;
