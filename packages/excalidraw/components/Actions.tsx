@@ -57,6 +57,10 @@ import { useTextEditorFocus } from "../hooks/useTextEditorFocus";
 
 import { getToolbarTools } from "./shapes";
 
+// 语音服务导入
+import { AliyunVoiceService } from "../voice-input/AliyunVoiceService";
+import { BrowserVoiceInputService } from "../voice-input/BrowserVoiceInputService";
+
 import "./Actions.scss";
 
 import { useDevice, useExcalidrawContainer } from "./App";
@@ -177,13 +181,11 @@ const VoiceInputButton = ({
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState<number>(0);
   const [voiceProvider, setVoiceProvider] = useState<VoiceServiceProvider>("aliyun");
   const voiceServiceRef = useRef<any>(null);
-  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastInterimResultRef = useRef<string>(""); // 保存最后的临时识别结果
 
-  // 组件卸载时清理语音服务和倒计时
+  // 组件卸载时清理语音服务
   useEffect(() => {
     return () => {
       if (voiceServiceRef.current) {
@@ -191,11 +193,7 @@ const VoiceInputButton = ({
         voiceServiceRef.current.stop();
         voiceServiceRef.current = null;
       }
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
-    };
+    }
   }, []);
 
   // 监听编辑模式变化，退出编辑模式时停止语音输入
@@ -206,94 +204,10 @@ const VoiceInputButton = ({
         voiceServiceRef.current.stop();
         voiceServiceRef.current = null;
       }
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-      }
       setIsListening(false);
       setError(null);
-      setCountdown(0);
     }
   }, [isInEditMode, isListening]);
-
-  // 启动倒计时
-  const startCountdown = () => {
-    setCountdown(30);
-    countdownTimerRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          // 倒计时结束，先保存最后的临时结果，然后停止录音
-          console.log("⏰ 倒计时结束，保存临时结果并停止录音");
-          handleTimeoutWithSave();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  // 延长倒计时
-  const extendCountdown = (additionalSeconds: number) => {
-    setCountdown((prev) => prev + additionalSeconds);
-  };
-
-  // 停止倒计时
-  const stopCountdown = () => {
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
-      countdownTimerRef.current = null;
-    }
-    setCountdown(0);
-  };
-
-  // 倒计时结束时的处理函数 - 先保存临时结果再停止
-  const handleTimeoutWithSave = () => {
-    // 如果有临时识别结果，先保存它
-    if (lastInterimResultRef.current && lastInterimResultRef.current.trim()) {
-      console.log("💾 倒计时结束，保存最后的临时结果:", lastInterimResultRef.current);
-      
-      // 使用临时结果作为最终结果进行保存
-      const tempResult = lastInterimResultRef.current.trim();
-      
-      if (isInEditMode) {
-        // 在编辑模式下保存到文本编辑器
-        const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
-        if (textEditor) {
-          let voiceText = formatLongSentence(tempResult);
-          const currentPosition = textEditor.selectionStart;
-          const currentText = textEditor.value;
-          
-          const isCompleteSentence = /[。！？.!?]$/.test(voiceText);
-          const needSeparator = currentPosition > 0 && 
-                               currentText[currentPosition - 1] !== " " && 
-                               currentText[currentPosition - 1] !== "\n";
-          
-          const separator = needSeparator ? " " : "";
-          const suffix = isCompleteSentence ? "\n" : "";
-          
-          const beforeText = currentText.slice(0, currentPosition);
-          const afterText = currentText.slice(currentPosition);
-          const newText = beforeText + separator + voiceText + suffix + afterText;
-          
-          textEditor.value = newText;
-          const newCursorPosition = currentPosition + separator.length + voiceText.length + suffix.length;
-          textEditor.selectionStart = newCursorPosition;
-          textEditor.selectionEnd = newCursorPosition;
-          
-          const inputEvent = new Event('input', { bubbles: true });
-          textEditor.dispatchEvent(inputEvent);
-          
-          console.log("💾 临时结果已保存到编辑器");
-        }
-      }
-      
-      // 清理临时结果
-      lastInterimResultRef.current = "";
-    }
-    
-    // 然后正常停止录音
-    handleStopRecording();
-  };
 
   // 停止录音的通用函数
   const handleStopRecording = () => {
@@ -303,9 +217,183 @@ const VoiceInputButton = ({
       voiceServiceRef.current = null;
     }
     setIsListening(false);
-    stopCountdown();
   };
 
+  // 开始录音 - 按下按钮时触发
+  const handleVoiceStart = async () => {
+    console.log("🎤 按下录音按钮，开始录音");
+    
+    // 如果已经在录音，不重复开始
+    if (isListening) {
+      return;
+    }
+    
+    // 如果不在编辑模式，不允许使用语音输入
+    if (!isInEditMode) {
+      setError("请先进入文本编辑模式");
+      return;
+    }
+
+    await startVoiceRecording();
+  };
+
+  // 停止录音 - 松开按钮时触发
+  const handleVoiceStop = () => {
+    console.log("🎤 松开录音按钮，停止录音");
+    
+    // 如果没在录音，不需要停止
+    if (!isListening) {
+      return;
+    }
+
+    handleStopRecording();
+  };
+
+  // 开始录音的核心逻辑
+  const startVoiceRecording = async () => {
+    // 清理之前的语音服务
+    if (voiceServiceRef.current) {
+      voiceServiceRef.current.stop();
+      voiceServiceRef.current = null;
+    }
+
+    // 创建语音服务实例
+    const VoiceService = voiceProvider === "aliyun" ? AliyunVoiceService : BrowserVoiceInputService;
+    voiceServiceRef.current = new VoiceService();
+
+    // 设置回调函数
+    voiceServiceRef.current.onResult((text: string) => {
+      console.log("✅ 最终识别结果:", text);
+      
+      if (text.trim()) {
+        // 如果在编辑模式，追加文本到编辑器
+        if (isInEditMode) {
+          console.log("🎯 在编辑模式下，追加最终句子");
+          
+          // 查找当前的文本编辑器
+          const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
+          if (textEditor) {
+            let voiceText = text.trim();
+            console.log("🎤 原始语音文本:", `"${voiceText}"`, "长度:", voiceText.length);
+            
+            // 对长句子进行自动换行处理：每30个字符后的逗号后添加换行
+            voiceText = formatLongSentence(voiceText);
+            
+            // 获取当前光标位置，在此位置追加新句子
+            const currentPosition = textEditor.selectionStart;
+            const currentText = textEditor.value;
+            
+            // 检查语音文本是否以句子结束符结尾
+            const isCompleteSentence = /[。！？.!?]$/.test(voiceText);
+            console.log("🔍 完整句子检测:", `"${voiceText}"`, "→", isCompleteSentence, "最后字符码:", voiceText.charCodeAt(voiceText.length - 1));
+            
+            // 检查是否需要添加分隔符
+            const needSeparator = currentPosition > 0 && 
+                                 currentText[currentPosition - 1] !== ' ' && 
+                                 currentText[currentPosition - 1] !== '\n';
+            
+            // 根据情况选择分隔符：完整句子用换行，否则用空格
+            let separator = '';
+            if (needSeparator) {
+              separator = ' '; // 默认用空格
+            }
+            
+            // 如果是完整句子，在末尾添加换行符
+            const suffix = isCompleteSentence ? '\n' : '';
+            
+            const beforeText = currentText.slice(0, currentPosition);
+            const afterText = currentText.slice(currentPosition);
+            const newText = beforeText + separator + voiceText + suffix + afterText;
+            
+            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition, 
+                       isCompleteSentence ? "(完整句子，添加换行)" : "(非完整句子)",
+                       voiceText.includes('\n') ? "(包含长句换行)" : "",
+                       "最后字符:", voiceText.slice(-1));
+            
+            // 更新编辑器内容
+            textEditor.value = newText;
+            
+            // 设置新的光标位置到追加文本的末尾
+            // 如果是完整句子，光标应该在换行符之后
+            const newCursorPosition = currentPosition + separator.length + voiceText.length + suffix.length;
+            textEditor.selectionStart = newCursorPosition;
+            textEditor.selectionEnd = newCursorPosition;
+            
+            // 触发输入事件以更新应用状态
+            const inputEvent = new Event('input', { bubbles: true });
+            textEditor.dispatchEvent(inputEvent);
+          }
+        }
+      }
+      
+      // 不要在这里重置按钮状态，因为语音识别还在继续
+      // setIsListening(false); // 删除这行
+      setError(null);
+    });
+
+    voiceServiceRef.current.onInterimResult((text: string) => {
+      console.log("🔄 临时识别结果:", text);
+      
+      // 保存最后的临时识别结果，用于倒计时结束时的紧急保存
+      if (text.trim()) {
+        lastInterimResultRef.current = text.trim();
+        console.log("🔄 正在识别句子:", text.trim());
+      }
+    });
+
+    voiceServiceRef.current.onError((error: any) => {
+      console.error("❌ 语音识别错误:", error);
+      
+      // 只有严重错误才停止语音输入，临时错误不影响按钮状态
+      if (error === "not-allowed" || error === "service-not-allowed") {
+        setError("请允许麦克风权限");
+        setIsListening(false);
+      } else {
+        // 其他错误（如网络错误、超时等）只显示错误信息，不重置按钮状态
+        setError(`语音识别错误: ${error}`);
+        console.log("临时错误，保持语音输入状态");
+      }
+    });
+
+    voiceServiceRef.current.onEnd(() => {
+      console.log("🔚 语音识别手动结束");
+      
+      // 清理临时数据
+      const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
+      if (textEditor) {
+        delete textEditor.dataset.voiceStartPosition;
+        delete textEditor.dataset.voiceOriginalText;
+      }
+      
+      // 只有手动停止时才更新UI状态
+      setIsListening(false);
+    });
+
+    // 开始语音识别
+    try {
+      // 检查麦克风权限
+      const permission = await navigator.permissions.query({ 
+        name: "microphone" as PermissionName 
+      });
+      
+      if (permission.state === "denied") {
+        setError("请允许麦克风权限");
+        return;
+      }
+      
+      setError(null);
+      setIsListening(true);
+      console.log("🎤 开始语音识别");
+      voiceServiceRef.current.start();
+      
+    } catch (error) {
+      console.error("❌ 启动语音识别失败:", error);
+      setError("启动失败");
+      setIsListening(false);
+    }
+  };
+
+  // 原来的切换函数改为内部使用
   const handleVoiceToggle = async () => {
     console.log("🎤 语音按钮被点击，当前状态:", isListening, "编辑模式:", isInEditMode);
     
@@ -333,7 +421,11 @@ const VoiceInputButton = ({
     voiceServiceRef.current = createVoiceInputService({
       provider: voiceProvider,
       lang: "zh-CN",
-      backendUrl: "https://192.168.31.244:4408" // 手动指定HTTPS后端URL
+      voiceConfig: {
+        serverUrl: "https://192.168.31.244",
+        port: 4408,
+        forceHttps: true
+      }
     });
     
     if (!voiceServiceRef.current.isSupported()) {
@@ -448,16 +540,10 @@ const VoiceInputButton = ({
     voiceServiceRef.current.onInterimResult((text: string) => {
       console.log("🔄 临时识别结果:", text);
       
-      // 保存最后的临时识别结果，用于倒计时结束时的紧急保存
+      // 保存最后的临时识别结果
       if (text.trim()) {
         lastInterimResultRef.current = text.trim();
         console.log("🔄 正在识别句子:", text.trim());
-        
-        // 如果倒计时剩余时间少于3秒且有临时结果，延长倒计时
-        if (countdown > 0 && countdown <= 3 && text.trim().length > 0) {
-          console.log("⏰ 检测到用户还在说话，延长倒计时10秒");
-          extendCountdown(10);
-        }
       }
     });
 
@@ -506,8 +592,6 @@ const VoiceInputButton = ({
       console.log("🎤 开始语音识别");
       voiceServiceRef.current.start();
       
-      // 启动30秒倒计时
-      startCountdown();
     } catch (error) {
       console.error("❌ 启动语音识别失败:", error);
       setError("启动失败");
@@ -553,8 +637,29 @@ const VoiceInputButton = ({
       </div>
       
       <button
-        onClick={handleVoiceToggle}
-        disabled={!isInEditMode && !isListening}
+        onMouseDown={handleVoiceStart}
+        onMouseUp={handleVoiceStop}
+        onMouseLeave={handleVoiceStop}
+        onTouchStart={(e) => {
+          e.preventDefault(); // 防止触发上下文菜单
+          e.stopPropagation(); // 防止事件冒泡
+          handleVoiceStart();
+        }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleVoiceStop();
+        }}
+        onTouchCancel={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleVoiceStop(); // 触摸被取消时也要停止录音
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault(); // 防止右键菜单
+          return false;
+        }}
+        disabled={!isInEditMode}
         style={{
           background: isListening 
             ? "#ef4444" 
@@ -566,26 +671,33 @@ const VoiceInputButton = ({
           borderRadius: "4px",
           padding: "6px 10px",
           fontSize: "12px",
-          cursor: isInEditMode || isListening ? "pointer" : "not-allowed",
+          cursor: isInEditMode ? "pointer" : "not-allowed",
           display: "flex",
           alignItems: "center",
           gap: "4px",
           width: "100%",
           justifyContent: "center",
-          opacity: isInEditMode || isListening ? 1 : 0.6,
+          opacity: isInEditMode ? 1 : 0.6,
+          userSelect: "none", // 防止选中文本
+          WebkitUserSelect: "none", // Safari 兼容
+          MozUserSelect: "none", // Firefox 兼容
+          msUserSelect: "none", // IE 兼容
+          WebkitTouchCallout: "none", // 防止iOS长按弹出菜单
+          WebkitTapHighlightColor: "transparent", // 防止点击高亮
+          touchAction: "manipulation", // 防止双击缩放
         }}
         title={
           isListening 
-            ? "点击停止语音输入" 
-            : isInEditMode 
-              ? "点击开始语音输入" 
-              : "请先进入文本编辑模式"
+            ? "松开停止录音" 
+            : !isInEditMode 
+              ? "请先进入文本编辑模式" 
+              : "按住开始录音"
         }
       >
         🎤
         <span>
           {isListening 
-            ? `停止录音 (${countdown}s)` 
+            ? "录音中..." 
             : isInEditMode 
               ? "语音输入" 
               : "语音输入(禁用)"

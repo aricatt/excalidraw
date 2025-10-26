@@ -37,7 +37,7 @@ app.get("/api/websocket-url", async (req, res) => {
   }
 });
 
-// 尝试启动HTTPS服务器
+// 启动HTTPS服务器（仅支持HTTPS）
 const startHttpsServer = () => {
   try {
     const key = fs.readFileSync("server.key");
@@ -47,22 +47,19 @@ const startHttpsServer = () => {
     
     httpsServer.listen(port, "0.0.0.0", () => {
       console.log(`🔒 HTTPS语音服务代理服务器正在运行在 https://0.0.0.0:${port}`);
-      console.log(`🔒 局域网HTTPS访问地址: https://[你的IP地址]:${port}`);
+      console.log(`🔒 局域网HTTPS访问地址: https://192.168.31.244:${port}`);
       console.log("⚠️  注意: 浏览器可能会提示证书不安全，请选择'继续访问'");
+      console.log("📝 配置的服务器地址: https://192.168.31.244");
     });
     
     return true;
   } catch (error) {
-    console.log("⚠️  HTTPS证书未找到，启动HTTP服务器");
-    return false;
+    console.error("❌ HTTPS证书未找到，请确保 server.key 和 server.crt 文件存在");
+    console.error("💡 提示: 使用以下命令生成自签名证书:");
+    console.error("   openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -nodes");
+    process.exit(1);
   }
 };
 
-// 如果HTTPS启动失败，则启动HTTP服务器
-if (!startHttpsServer()) {
-  app.listen(port, "0.0.0.0", () => {
-    console.log(`🔓 HTTP语音服务代理服务器正在运行在 http://0.0.0.0:${port}`);
-    console.log(`🔓 局域网HTTP访问地址: http://[你的IP地址]:${port}`);
-    console.log("💡 提示: 如需HTTPS支持，请运行 'node generate-cert.js' 生成证书");
-  });
-}
+// 启动HTTPS服务器
+startHttpsServer();

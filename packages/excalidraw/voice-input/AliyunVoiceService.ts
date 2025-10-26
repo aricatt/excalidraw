@@ -1,6 +1,7 @@
 import type { VoiceInputService } from "./VoiceInputService";
 import { AliyunAudioRecorder } from "./AliyunAudioRecorder";
 import { AliyunWebSocketClient, type AliyunRecognitionResult } from "./AliyunWebSocketClient";
+import { getWebSocketUrlEndpoint, type VoiceServiceConfig } from "./config";
 
 /**
  * 阿里云语音识别服务
@@ -15,32 +16,16 @@ export class AliyunVoiceService implements VoiceInputService {
   private onEndCallback: () => void = () => {};
   private onRestartCallback: () => void = () => {};
   private isRunning: boolean = false;
-  private backendUrl: string;
+  private config: VoiceServiceConfig;
 
-  constructor(backendUrl?: string) {
-    // 如果没有指定后端URL，尝试自动检测
-    this.backendUrl = backendUrl || this.getDefaultBackendUrl();
-  }
-
-  /**
-   * 获取默认的后端URL
-   * 根据当前页面的协议和主机名自动选择合适的URL
-   */
-  private getDefaultBackendUrl(): string {
-    const currentHost = window.location.hostname;
-    const currentProtocol = window.location.protocol;
-    const port = 4408;
-    
-    // 根据当前页面的协议选择对应的协议
-    const protocol = currentProtocol === "https:" ? "https" : "http";
-    
-    // 如果当前是localhost，保持localhost
-    if (currentHost === "localhost" || currentHost === "127.0.0.1") {
-      return `${protocol}://localhost:${port}`;
-    }
-    
-    // 否则使用当前主机名（适用于局域网环境）
-    return `${protocol}://${currentHost}:${port}`;
+  constructor(config?: Partial<VoiceServiceConfig>) {
+    // 使用传入的配置或默认配置
+    this.config = {
+      serverUrl: "https://192.168.31.244",
+      port: 4408,
+      forceHttps: true,
+      ...config
+    };
   }
 
   /**
@@ -193,7 +178,8 @@ export class AliyunVoiceService implements VoiceInputService {
    */
   private async getWebSocketUrl(): Promise<string> {
     try {
-      const response = await fetch(`${this.backendUrl}/api/websocket-url`);
+      const endpoint = getWebSocketUrlEndpoint(this.config);
+      const response = await fetch(endpoint);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
