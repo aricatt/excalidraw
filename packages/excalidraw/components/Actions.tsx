@@ -94,6 +94,34 @@ import type {
 } from "../types";
 import type { ActionManager } from "../actions/manager";
 
+/**
+ * 格式化长句子：在每30个字符后的逗号后添加换行符
+ * @param text 原始文本
+ * @returns 格式化后的文本
+ */
+const formatLongSentence = (text: string): string => {
+  if (text.length <= 30) {
+    return text; // 短句子不需要处理
+  }
+  
+  let result = "";
+  let charCount = 0;
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    result += char;
+    charCount++;
+    
+    // 如果遇到逗号且已经超过30个字符，添加换行符
+    if ((char === "，" || char === ",") && charCount >= 30) {
+      result += "\n";
+      charCount = 0; // 重置计数器
+    }
+  }
+  
+  return result;
+};
+
 // Common CSS class combinations
 const PROPERTIES_CLASSES = clsx([
   CLASSES.SHAPE_ACTIONS_THEME_SCOPE,
@@ -149,6 +177,7 @@ const VoiceInputButton = ({
   const [voiceProvider, setVoiceProvider] = useState<VoiceServiceProvider>("aliyun");
   const voiceServiceRef = useRef<any>(null);
   const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastInterimResultRef = useRef<string>(""); // 保存最后的临时识别结果
 
   // 组件卸载时清理语音服务和倒计时
   useEffect(() => {
@@ -189,14 +218,19 @@ const VoiceInputButton = ({
     countdownTimerRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          // 倒计时结束，自动停止录音
-          console.log("⏰ 倒计时结束，自动停止录音");
-          handleStopRecording();
+          // 倒计时结束，先保存最后的临时结果，然后停止录音
+          console.log("⏰ 倒计时结束，保存临时结果并停止录音");
+          handleTimeoutWithSave();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
+  };
+
+  // 延长倒计时
+  const extendCountdown = (additionalSeconds: number) => {
+    setCountdown((prev) => prev + additionalSeconds);
   };
 
   // 停止倒计时
@@ -206,6 +240,55 @@ const VoiceInputButton = ({
       countdownTimerRef.current = null;
     }
     setCountdown(0);
+  };
+
+  // 倒计时结束时的处理函数 - 先保存临时结果再停止
+  const handleTimeoutWithSave = () => {
+    // 如果有临时识别结果，先保存它
+    if (lastInterimResultRef.current && lastInterimResultRef.current.trim()) {
+      console.log("💾 倒计时结束，保存最后的临时结果:", lastInterimResultRef.current);
+      
+      // 使用临时结果作为最终结果进行保存
+      const tempResult = lastInterimResultRef.current.trim();
+      
+      if (isInEditMode) {
+        // 在编辑模式下保存到文本编辑器
+        const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
+        if (textEditor) {
+          let voiceText = formatLongSentence(tempResult);
+          const currentPosition = textEditor.selectionStart;
+          const currentText = textEditor.value;
+          
+          const isCompleteSentence = /[。！？.!?]$/.test(voiceText);
+          const needSeparator = currentPosition > 0 && 
+                               currentText[currentPosition - 1] !== " " && 
+                               currentText[currentPosition - 1] !== "\n";
+          
+          const separator = needSeparator ? " " : "";
+          const suffix = isCompleteSentence ? "\n" : "";
+          
+          const beforeText = currentText.slice(0, currentPosition);
+          const afterText = currentText.slice(currentPosition);
+          const newText = beforeText + separator + voiceText + suffix + afterText;
+          
+          textEditor.value = newText;
+          const newCursorPosition = currentPosition + separator.length + voiceText.length + suffix.length;
+          textEditor.selectionStart = newCursorPosition;
+          textEditor.selectionEnd = newCursorPosition;
+          
+          const inputEvent = new Event('input', { bubbles: true });
+          textEditor.dispatchEvent(inputEvent);
+          
+          console.log("💾 临时结果已保存到编辑器");
+        }
+      }
+      
+      // 清理临时结果
+      lastInterimResultRef.current = "";
+    }
+    
+    // 然后正常停止录音
+    handleStopRecording();
   };
 
   // 停止录音的通用函数
@@ -266,29 +349,46 @@ const VoiceInputButton = ({
           // 查找当前的文本编辑器
           const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
           if (textEditor) {
-            const voiceText = text.trim();
+            let voiceText = text.trim();
+            
+            // 对长句子进行自动换行处理：每30个字符后的逗号后添加换行
+            voiceText = formatLongSentence(voiceText);
             
             // 获取当前光标位置，在此位置追加新句子
             const currentPosition = textEditor.selectionStart;
             const currentText = textEditor.value;
             
-            // 检查是否需要添加空格分隔
-            const needSpace = currentPosition > 0 && 
-                             currentText[currentPosition - 1] !== ' ' && 
-                             currentText[currentPosition - 1] !== '\n';
+            // 检查语音文本是否以句子结束符结尾
+            const isCompleteSentence = /[。！？.!?]$/.test(voiceText);
             
-            const separator = needSpace ? ' ' : '';
+            // 检查是否需要添加分隔符
+            const needSeparator = currentPosition > 0 && 
+                                 currentText[currentPosition - 1] !== ' ' && 
+                                 currentText[currentPosition - 1] !== '\n';
+            
+            // 根据情况选择分隔符：完整句子用换行，否则用空格
+            let separator = '';
+            if (needSeparator) {
+              separator = ' '; // 默认用空格
+            }
+            
+            // 如果是完整句子，在末尾添加换行符
+            const suffix = isCompleteSentence ? '\n' : '';
+            
             const beforeText = currentText.slice(0, currentPosition);
             const afterText = currentText.slice(currentPosition);
-            const newText = beforeText + separator + voiceText + afterText;
+            const newText = beforeText + separator + voiceText + suffix + afterText;
             
-            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition);
+            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition, 
+                       isCompleteSentence ? "(完整句子，添加换行)" : "(非完整句子)",
+                       voiceText.includes('\n') ? "(包含长句换行)" : "");
             
             // 更新编辑器内容
             textEditor.value = newText;
             
             // 设置新的光标位置到追加文本的末尾
-            const newCursorPosition = currentPosition + separator.length + voiceText.length;
+            // 如果是完整句子，光标应该在换行符之后
+            const newCursorPosition = currentPosition + separator.length + voiceText.length + suffix.length;
             textEditor.selectionStart = newCursorPosition;
             textEditor.selectionEnd = newCursorPosition;
             
@@ -341,15 +441,16 @@ const VoiceInputButton = ({
     voiceServiceRef.current.onInterimResult((text: string) => {
       console.log("🔄 临时识别结果:", text);
       
-      // 对于阿里云的句子级识别，临时结果只用于显示反馈，不修改文本
-      // 因为阿里云会在句子完成时发送最终结果，我们只在那时追加文本
-      
-      // 这里可以添加视觉反馈，比如显示当前正在识别的内容
-      // 但不直接修改文本编辑器，避免与最终结果冲突
-      
+      // 保存最后的临时识别结果，用于倒计时结束时的紧急保存
       if (text.trim()) {
-        // 可以在这里添加临时的视觉提示，比如在UI上显示"正在识别: xxx"
+        lastInterimResultRef.current = text.trim();
         console.log("🔄 正在识别句子:", text.trim());
+        
+        // 如果倒计时剩余时间少于3秒且有临时结果，延长倒计时
+        if (countdown > 0 && countdown <= 3 && text.trim().length > 0) {
+          console.log("⏰ 检测到用户还在说话，延长倒计时10秒");
+          extendCountdown(10);
+        }
       }
     });
 
