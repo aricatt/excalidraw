@@ -14,12 +14,14 @@ export class AliyunWebSocketClient {
   private taskId: string | null = null;
   private isConnected: boolean = false;
   private isTaskStarted: boolean = false;
+  private languageHints: string[];
   private onResultCallback: (result: AliyunRecognitionResult) => void = () => {};
   private onErrorCallback: (error: any) => void = () => {};
   private onCloseCallback: () => void = () => {};
 
-  constructor(websocketUrl: string) {
+  constructor(websocketUrl: string, languageHints: string[] = ["zh"]) {
     this.websocketUrl = websocketUrl;
+    this.languageHints = languageHints;
   }
 
   /**
@@ -53,7 +55,7 @@ export class AliyunWebSocketClient {
                 format: "pcm",
                 sample_rate: 16000,
                 disfluency_removal_enabled: false,
-                language_hints: ["zh"],
+                language_hints: this.languageHints,
               },
               input: {},
             },

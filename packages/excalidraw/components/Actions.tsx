@@ -183,6 +183,7 @@ const VoiceInputButton = ({
   const [isConnecting, setIsConnecting] = useState(false); // 新增：连接状态
   const [error, setError] = useState<string | null>(null);
   const [voiceProvider, setVoiceProvider] = useState<VoiceServiceProvider>("aliyun");
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["zh"]); // 语言选择
   const voiceServiceRef = useRef<any>(null);
   const lastInterimResultRef = useRef<string>(""); // 保存最后的临时识别结果
 
@@ -303,7 +304,9 @@ const VoiceInputButton = ({
 
     // 创建语音服务实例
     const VoiceService = voiceProvider === "aliyun" ? AliyunVoiceService : BrowserVoiceInputService;
-    voiceServiceRef.current = new VoiceService();
+    voiceServiceRef.current = voiceProvider === "aliyun" 
+      ? new VoiceService(undefined, selectedLanguages)
+      : new VoiceService();
 
     // 设置回调函数
     voiceServiceRef.current.onResult((text: string) => {
@@ -687,6 +690,54 @@ const VoiceInputButton = ({
           <option value="browser">浏览器原生 (免费)</option>
         </select>
       </div>
+
+      {/* 语言选择器 - 仅在阿里云服务时显示 */}
+      {voiceProvider === "aliyun" && (
+        <div style={{ marginBottom: "8px" }}>
+          <label style={{ 
+            fontSize: "10px", 
+            color: "#6b7280", 
+            display: "block", 
+            marginBottom: "2px" 
+          }}>
+            识别语言:
+          </label>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {[
+              { code: "zh", name: "中文" },
+              { code: "en", name: "英语" },
+              { code: "ja", name: "日语" }
+            ].map((lang) => (
+              <label key={lang.code} style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                fontSize: "9px", 
+                color: "#6b7280",
+                cursor: isListening ? "not-allowed" : "pointer"
+              }}>
+                <input
+                  type="checkbox"
+                  checked={selectedLanguages.includes(lang.code)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedLanguages([...selectedLanguages, lang.code]);
+                    } else {
+                      setSelectedLanguages(selectedLanguages.filter(l => l !== lang.code));
+                    }
+                  }}
+                  disabled={isListening}
+                  style={{ 
+                    marginRight: "3px", 
+                    transform: "scale(0.8)",
+                    cursor: isListening ? "not-allowed" : "pointer"
+                  }}
+                />
+                {lang.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       
       <button
         onMouseDown={handleVoiceStart}

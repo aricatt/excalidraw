@@ -17,8 +17,9 @@ export class AliyunVoiceService implements VoiceInputService {
   private onRestartCallback: () => void = () => {};
   private isRunning: boolean = false;
   private config: VoiceServiceConfig;
+  private languageHints: string[];
 
-  constructor(config?: Partial<VoiceServiceConfig>) {
+  constructor(config?: Partial<VoiceServiceConfig>, languageHints: string[] = ["zh"]) {
     // 使用传入的配置或默认配置
     this.config = {
       serverUrl: "https://192.168.31.244",
@@ -26,6 +27,7 @@ export class AliyunVoiceService implements VoiceInputService {
       forceHttps: true,
       ...config
     };
+    this.languageHints = languageHints;
   }
 
   /**
@@ -57,7 +59,7 @@ export class AliyunVoiceService implements VoiceInputService {
       const websocketUrl = await this.getWebSocketUrl();
 
       // 2. 创建并连接WebSocket客户端
-      this.websocketClient = new AliyunWebSocketClient(websocketUrl);
+      this.websocketClient = new AliyunWebSocketClient(websocketUrl, this.languageHints);
       
       // 设置WebSocket回调
       this.websocketClient.onResult((result: AliyunRecognitionResult) => {
