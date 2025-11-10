@@ -180,6 +180,7 @@ const VoiceInputButton = ({
   isInEditMode: boolean;
 }) => {
   const [isListening, setIsListening] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false); // 新增：连接状态
   const [error, setError] = useState<string | null>(null);
   const [voiceProvider, setVoiceProvider] = useState<VoiceServiceProvider>("aliyun");
   const voiceServiceRef = useRef<any>(null);
@@ -211,20 +212,39 @@ const VoiceInputButton = ({
 
   // 停止录音的通用函数
   const handleStopRecording = () => {
+    console.log("🔚 [DEBUG] 开始停止录音流程");
+    console.log("🔚 [DEBUG] 当前状态:", { 
+      isListening, 
+      isConnecting,
+      hasVoiceService: !!voiceServiceRef.current 
+    });
+    
     if (voiceServiceRef.current) {
-      console.log("停止语音识别");
+      console.log("🔚 [DEBUG] 停止语音服务");
       voiceServiceRef.current.stop();
       voiceServiceRef.current = null;
     }
+    
+    console.log("🔄 [DEBUG] 重置状态: isListening=false");
     setIsListening(false);
   };
 
   // 开始录音 - 按下按钮时触发
   const handleVoiceStart = async () => {
-    console.log("🎤 按下录音按钮，开始录音");
+    console.log("🎤 [DEBUG] 按下录音按钮");
+    console.log("🎤 [DEBUG] 当前状态:", { 
+      isListening, 
+      isConnecting, 
+      isInEditMode,
+      hasVoiceService: !!voiceServiceRef.current 
+    });
     
-    // 如果已经在录音，不重复开始
-    if (isListening) {
+    // 如果已经在录音或正在连接，不重复开始
+    if (isListening || isConnecting) {
+      console.log("⚠️ [DEBUG] 跳过启动，原因:", { 
+        isListening: isListening ? "正在录音" : false,
+        isConnecting: isConnecting ? "正在连接" : false
+      });
       return;
     }
     
@@ -234,25 +254,49 @@ const VoiceInputButton = ({
       return;
     }
 
-    await startVoiceRecording();
+    // 立即设置连接状态，给用户反馈
+    setIsConnecting(true);
+    console.log("🔄 [DEBUG] 设置连接状态为 true");
+    setError(null);
+    
+    try {
+      await startVoiceRecording();
+    } catch (error) {
+      console.error("启动语音识别失败:", error);
+      setIsConnecting(false);
+      setError("连接失败，请重试");
+    }
   };
 
   // 停止录音 - 松开按钮时触发
   const handleVoiceStop = () => {
-    console.log("🎤 松开录音按钮，停止录音");
+    console.log("🛑 [DEBUG] 松开录音按钮");
+    console.log("🛑 [DEBUG] 当前状态:", { isListening, isConnecting });
+    
+    // 重置连接状态（如果正在连接中被打断）
+    if (isConnecting) {
+      console.log("🔄 [DEBUG] 连接中被打断，重置连接状态");
+      setIsConnecting(false);
+    }
     
     // 如果没在录音，不需要停止
     if (!isListening) {
+      console.log("⚠️ [DEBUG] 没有在录音，跳过停止操作");
       return;
     }
 
+    console.log("🛑 [DEBUG] 执行停止录音");
     handleStopRecording();
   };
 
   // 开始录音的核心逻辑
   const startVoiceRecording = async () => {
+    console.log("🚀 [DEBUG] 开始 startVoiceRecording");
+    console.log("🚀 [DEBUG] 当前状态:", { isListening, isConnecting });
+    
     // 清理之前的语音服务
     if (voiceServiceRef.current) {
+      console.log("🧹 [DEBUG] 清理之前的语音服务");
       voiceServiceRef.current.stop();
       voiceServiceRef.current = null;
     }
@@ -378,17 +422,25 @@ const VoiceInputButton = ({
       
       if (permission.state === "denied") {
         setError("请允许麦克风权限");
+        setIsConnecting(false);
         return;
       }
       
       setError(null);
-      setIsListening(true);
       console.log("🎤 开始语音识别");
-      voiceServiceRef.current.start();
-      
+
+      // 启动语音服务
+      await voiceServiceRef.current.start();
+
+      // 连接成功后更新状态
+      setIsConnecting(false);
+      setIsListening(true);
+      console.log("✅ 语音服务连接成功，可以开始说话");
+            
     } catch (error) {
       console.error("❌ 启动语音识别失败:", error);
       setError("启动失败");
+      setIsConnecting(false);  // 新增这行
       setIsListening(false);
     }
   };
@@ -661,11 +713,13 @@ const VoiceInputButton = ({
         }}
         disabled={!isInEditMode}
         style={{
-          background: isListening 
-            ? "#ef4444" 
-            : isInEditMode 
-              ? "#6b7280" 
-              : "#9ca3af",
+          background: isConnecting
+            ? "linear-gradient(45deg, #fbbf24, #f59e0b)"  // 连接中：黄色渐变
+            : isListening 
+              ? "#ef4444"   // 录音中：红色
+              : isInEditMode 
+                ? "#6b7280"  // 准备：灰色
+                : "#9ca3af", // 禁用：浅灰
           color: "white",
           border: "none",
           borderRadius: "4px",
@@ -687,20 +741,24 @@ const VoiceInputButton = ({
           touchAction: "manipulation", // 防止双击缩放
         }}
         title={
-          isListening 
-            ? "松开停止录音" 
-            : !isInEditMode 
-              ? "请先进入文本编辑模式" 
-              : "按住开始录音"
+          isConnecting
+            ? "正在连接语音服务..."
+            : isListening 
+              ? "松开停止录音" 
+              : !isInEditMode 
+                ? "请先进入文本编辑模式" 
+                : "按住开始录音"
         }
       >
         🎤
         <span>
-          {isListening 
-            ? "录音中..." 
-            : isInEditMode 
-              ? "语音输入" 
-              : "语音输入(禁用)"
+          {isConnecting
+            ? "连接中..."
+            : isListening 
+              ? "录音中..." 
+              : isInEditMode 
+                ? "语音输入" 
+                : "语音输入(禁用)"
           }
         </span>
       </button>
