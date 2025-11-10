@@ -592,6 +592,27 @@ body.excalidraw-cursor-resize * {
     }
   }
 
+  // 文本编辑器样式
+  .excalidraw-wysiwyg {
+    &::placeholder {
+      color: rgba(0, 0, 0, 0.5);
+      font-style: italic;
+      opacity: 1;
+      font-size: 14px; // 使用固定字体大小
+      line-height: 1.2;
+      white-space: nowrap; // 防止占位符换行
+      overflow: visible; // 确保占位符可见
+      text-overflow: clip; // 防止文本被截断
+    }
+
+    // 暗色主题下的占位符
+    .theme--dark & {
+      &::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+  }
+
   @media print {
     .App-bottom-bar,
     .FixedSideContainer,

@@ -245,8 +245,21 @@ export const textWysiwyg = ({
         width += 0.5;
       }
 
+      // 为边框和内边距预留空间
+      const borderAndPadding = 10; // 2px border + 8px padding (4px * 2)
+      width += borderAndPadding;
+      
+      // 确保空文本框有最小宽度来显示占位符
+      const minWidth = 150; // 增加到150px
+      if (!element.originalText || element.originalText.trim() === "") {
+        width = Math.max(width, minWidth);
+        // 为空文本框额外增加宽度缓冲
+        width += 20;
+      }
+      
       // add 5% buffer otherwise it causes wysiwyg to jump
       height *= 1.05;
+      height += 6; // 为上下边框和内边距预留空间
 
       const font = getFontString(updatedTextElement);
 
@@ -309,11 +322,11 @@ export const textWysiwyg = ({
     minHeight: "1em",
     backfaceVisibility: "hidden",
     margin: 0,
-    padding: 0,
-    border: 0,
+    padding: "2px 4px", // 添加一点内边距
+    border: "1px dashed var(--color-gray-40)", // 使用主题变量的虚线边框
     outline: 0,
     resize: "none",
-    background: "transparent",
+    background: "var(--color-surface-lowest)", // 使用主题背景色
     overflow: "hidden",
     // must be specified because in dark mode canvas creates a stacking context
     zIndex: "var(--zIndex-wysiwyg)",
@@ -321,9 +334,16 @@ export const textWysiwyg = ({
     // prevent line wrapping (`whitespace: nowrap` doesn't work on FF)
     whiteSpace,
     overflowWrap: "break-word",
-    boxSizing: "content-box",
+    boxSizing: "border-box", // 改为border-box，让宽高包含边框和内边距
+    borderRadius: "2px", // 添加圆角
   });
   editable.value = element.originalText;
+  
+  // 添加占位符文本
+  if (!element.originalText || element.originalText.trim() === "") {
+    editable.placeholder = "点击输入文字...";
+  }
+  
   updateWysiwygStyle();
 
   if (onChange) {
