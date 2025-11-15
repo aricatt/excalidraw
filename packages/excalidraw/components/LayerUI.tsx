@@ -612,6 +612,7 @@ const LayerUI = ({
               actionManager={actionManager}
               showExitZenModeBtn={showExitZenModeBtn}
               renderWelcomeScreen={renderWelcomeScreen}
+              app={app}
             />
             {appState.scrolledOutside && (
               <button

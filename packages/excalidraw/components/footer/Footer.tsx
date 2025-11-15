@@ -4,22 +4,26 @@ import { actionShortcuts } from "../../actions";
 import { useTunnels } from "../../context/tunnels";
 import { ExitZenModeAction, UndoRedoActions, ZoomActions } from "../Actions";
 import { HelpButton } from "../HelpButton";
+import { FloatingVoiceButton } from "../FloatingVoiceButton";
 import { Section } from "../Section";
 import Stack from "../Stack";
 
 import type { ActionManager } from "../../actions/manager";
 import type { UIAppState } from "../../types";
+import type { AppClassProperties } from "../../types";
 
 const Footer = ({
   appState,
   actionManager,
   showExitZenModeBtn,
   renderWelcomeScreen,
+  app,
 }: {
   appState: UIAppState;
   actionManager: ActionManager;
   showExitZenModeBtn: boolean;
   renderWelcomeScreen: boolean;
+  app: AppClassProperties;
 }) => {
   const { FooterCenterTunnel, WelcomeScreenHelpHintTunnel } = useTunnels();
 
@@ -59,8 +63,9 @@ const Footer = ({
           "transition-right": appState.zenModeEnabled,
         })}
       >
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "8px" }}>
           {renderWelcomeScreen && <WelcomeScreenHelpHintTunnel.Out />}
+          <FloatingVoiceButton app={app} />
           <HelpButton
             onClick={() => actionManager.executeAction(actionShortcuts)}
           />
