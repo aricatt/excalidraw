@@ -28,6 +28,44 @@ export const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({
   const [interimText, setInterimText] = useState("");
   const [allRecognizedText, setAllRecognizedText] = useState(""); // 累积所有识别结果
   const voiceServiceRef = useRef<any>(null);
+  const isMouseDownRef = useRef(false);
+
+  // 添加全局事件监听器来确保鼠标释放被捕获
+  React.useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isMouseDownRef.current && isListening) {
+        console.log("全局鼠标释放事件触发");
+        handleMouseUp();
+      }
+    };
+
+    const handleGlobalTouchEnd = () => {
+      if (isMouseDownRef.current && isListening) {
+        console.log("全局触摸结束事件触发");
+        handleMouseUp();
+      }
+    };
+
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    document.addEventListener('touchend', handleGlobalTouchEnd);
+    document.addEventListener('contextmenu', (e) => {
+      if (isMouseDownRef.current) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('touchend', handleGlobalTouchEnd);
+      document.removeEventListener('contextmenu', (e) => {
+        if (isMouseDownRef.current) {
+          e.preventDefault();
+          return false;
+        }
+      });
+    };
+  }, [isListening]);
 
   const startVoiceRecording = async () => {
     try {
@@ -194,13 +232,25 @@ export const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({
     }
   };
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log("鼠标按下，设置标记");
+    isMouseDownRef.current = true;
     if (!isListening && !isConnecting) {
       startVoiceRecording();
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log("鼠标释放，清除标记");
+    isMouseDownRef.current = false;
     if (isListening) {
       stopVoiceRecording();
     }
@@ -242,44 +292,78 @@ export const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
         onTouchStart={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           handleMouseDown();
         }}
         onTouchEnd={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           handleMouseUp();
         }}
-        disabled={isConnecting}
+        onDragStart={(e) => {
+          e.preventDefault();
+          return false;
+        }}
         style={{
-          width: "48px",
-          height: "48px",
+          width: "80px",
+          height: "80px",
           borderRadius: "50%",
           border: "none",
-          cursor: isConnecting ? "not-allowed" : "pointer",
-          fontSize: "16px",
-          fontWeight: "bold",
+          backgroundColor: isListening 
+            ? "#ef4444" 
+            : isConnecting 
+            ? "#fbbf24" 
+            : error 
+            ? "#f87171" 
+            : "#3b82f6",
+          color: "white",
+          fontSize: "32px",
+          cursor: "pointer",
+          boxShadow: "0 6px 20px rgba(0, 0, 0, 0.2)",
           transition: "all 0.2s ease",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          ...getButtonStyle(),
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          outline: "none",
+          transform: isListening ? "scale(1.1)" : "scale(1)",
+          pointerEvents: "auto",
+          position: "relative",
+          zIndex: 10001,
+          WebkitTouchCallout: "none",
+          WebkitTapHighlightColor: "transparent",
+          touchAction: "manipulation",
         }}
+        disabled={isConnecting}
         title={
-          isConnecting 
-            ? "正在连接语音服务..." 
+          error 
+            ? `语音输入错误: ${error}` 
             : isListening 
-            ? "松开停止录音" 
-            : "按住开始语音录入"
+            ? "正在录音，松开停止" 
+            : isConnecting 
+            ? "正在连接..." 
+            : "按住录音"
         }
       >
-        {getButtonText()}
+        {error ? "❌" : isListening ? "🎤" : isConnecting ? "⏳" : "🎤"}
       </button>
       
       {error && (
         <div
           style={{
-            position: "absolute",
+            position: "relative",
             bottom: "55px",
             right: "0",
             backgroundColor: "#fef2f2",
@@ -300,10 +384,10 @@ export const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({
       {showPopup && (
         <div
           style={{
-            position: "fixed",
-            top: "50%",
+            position: "absolute",
+            bottom: "100px",
             left: "50%",
-            transform: "translate(-50%, -50%)",
+            transform: "translateX(-50%)",
             backgroundColor: "white",
             border: "2px solid #e5e7eb",
             borderRadius: "12px",
@@ -311,8 +395,9 @@ export const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({
             minWidth: "320px",
             maxWidth: "500px",
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-            zIndex: 10000,
+            zIndex: 10001,
             textAlign: "center",
+            pointerEvents: "auto",
           }}
         >
           <div style={{ marginBottom: "16px" }}>

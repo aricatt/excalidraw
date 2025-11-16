@@ -58,6 +58,23 @@ const Footer = ({
         </Stack.Col>
       </div>
       <FooterCenterTunnel.Out />
+      {/* 底部中央语音按钮 */}
+      <div
+        className="layer-ui__wrapper__footer-center zen-mode-transition"
+        style={{
+          position: "absolute",
+          left: "50%",
+          transform: "translateX(-50%)",
+          bottom: "16px",
+          zIndex: 10000,
+          pointerEvents: "auto",
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <FloatingVoiceButton app={app} />
+      </div>
       <div
         className={clsx("layer-ui__wrapper__footer-right zen-mode-transition", {
           "transition-right": appState.zenModeEnabled,
@@ -65,7 +82,6 @@ const Footer = ({
       >
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "8px" }}>
           {renderWelcomeScreen && <WelcomeScreenHelpHintTunnel.Out />}
-          <FloatingVoiceButton app={app} />
           <HelpButton
             onClick={() => actionManager.executeAction(actionShortcuts)}
           />
