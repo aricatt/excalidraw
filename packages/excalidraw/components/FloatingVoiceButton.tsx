@@ -190,13 +190,23 @@ export const FloatingVoiceButton: React.FC<FloatingVoiceButtonProps> = ({
       // 3. 添加到场景
       app.scene.insertElement(textElement);
 
-      // 4. 清理状态
+      // 4. 选中新创建的文本元素
+      // 直接修改应用状态来选中新元素
+      app.state.selectedElementIds = { [textElement.id]: true };
+      
+      // 触发重新渲染
+      setTimeout(() => {
+        // 使用 setTimeout 确保元素已经被添加到场景中
+        app.state.selectedElementIds = { [textElement.id]: true };
+      }, 10);
+
+      // 5. 清理状态
       setShowPopup(false);
       setRecognizedText("");
       setInterimText("");
       setAllRecognizedText("");
 
-      console.log("文本元素已添加到场景");
+      console.log("文本元素已添加到场景并选中");
 
     } catch (error) {
       console.error("创建文本元素失败:", error);
