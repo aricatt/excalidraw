@@ -5,7 +5,7 @@
   "scripts": {
     "build:packages": "yarn --cwd ../../ build:packages",
     "build:workspace": "yarn build:packages && yarn copy:assets",
-    "copy:assets": "cp -r ../../packages/excalidraw/dist/prod/fonts ./public",
+    "copy:assets": "copyfiles -u 4 \"../../packages/excalidraw/dist/prod/fonts/**/*\" public",
     "dev": "yarn build:workspace && next dev -p 3005",
     "build": "yarn build:workspace && next build",
     "start": "next start -p 3006",
@@ -20,6 +20,7 @@
     "@types/node": "^20",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
+    "copyfiles": "2.4.1",
     "path2d-polyfill": "2.0.1",
     "typescript": "^5"
   }

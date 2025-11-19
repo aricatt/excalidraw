@@ -1,0 +1,138 @@
+// Prisma schema for Excalidraw Plus API Service
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联关系
+  drawings  Drawing[]
+  sessions  Session[]
+  collaborations Collaboration[]
+
+  @@map("users")
+}
+
+// 会话表 (JWT 黑名单管理)
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// 绘图数据表
+model Drawing {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  content     Json     // Excalidraw 原生 JSON 数据 (elements + appState)
+  thumbnail   String?  // 缩略图 URL
+  isPublic    Boolean  @default(false)
+  version     Int      @default(1) // 版本控制
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+
+  // 关联关系
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collaborations Collaboration[]
+  tags          DrawingTag[]
+  exports       DrawingExport[] // 导出文件关联
+
+  @@map("drawings")
+}
+
+// 协作表
+model Collaboration {
+  id         String   @id @default(cuid())
+  drawingId  String
+  userId     String
+  permission String   // "read" | "write" | "admin"
+  createdAt  DateTime @default(now())
+
+  // 关联关系
+  drawing Drawing @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([drawingId, userId])
+  @@map("collaborations")
+}
+
+// 标签表
+model Tag {
+  id       String @id @default(cuid())
+  name     String @unique
+  color    String @default("#6366f1")
+  
+  // 关联关系
+  drawings DrawingTag[]
+
+  @@map("tags")
+}
+
+// 绘图标签关联表
+model DrawingTag {
+  drawingId String
+  tagId     String
+
+  // 关联关系
+  drawing Drawing @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([drawingId, tagId])
+  @@map("drawing_tags")
+}
+
+// 绘图导出文件表
+model DrawingExport {
+  id        String   @id @default(cuid())
+  drawingId String
+  format    String   // "png", "svg", "pdf", "json"
+  filename  String
+  fileData  Bytes?   // 二进制文件数据 (小文件直接存储)
+  fileUrl   String?  // 文件 URL (大文件存储到云端)
+  fileSize  Int
+  width     Int?     // 导出尺寸
+  height    Int?
+  scale     Float?   // 导出缩放比例
+  quality   Float?   // 导出质量 (PNG/JPG)
+  createdAt DateTime @default(now())
+
+  // 关联关系
+  drawing Drawing @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+
+  @@map("drawing_exports")
+}
+
+// 通用文件存储表
+model File {
+  id        String   @id @default(cuid())
+  filename  String
+  originalName String
+  mimeType  String
+  size      Int
+  url       String
+  createdAt DateTime @default(now())
+
+  @@map("files")
+}
