@@ -16,7 +16,7 @@ beforeAll(async () => {
   await testPrisma.$connect();
   
   // 清理并重置数据库
-  await testPrisma.$executeRaw`TRUNCATE TABLE "User", "Session", "Drawing", "Collaboration", "Tag", "DrawingTag", "File" RESTART IDENTITY CASCADE`;
+  await testPrisma.$executeRaw`TRUNCATE TABLE "users", "sessions", "drawings", "collaborations", "tags", "drawing_tags", "files" RESTART IDENTITY CASCADE`;
 });
 
 afterAll(async () => {
@@ -36,23 +36,35 @@ beforeEach(async () => {
 });
 
 // 测试工具函数
-export const createTestUser = async (data?: Partial<any>) => {
+export const createTestUser = async (
+  email = "test@example.com",
+  username = "testuser",
+  password = "hashedpassword",
+) => {
   return testPrisma.user.create({
     data: {
-      email: data?.email || 'test@example.com',
-      username: data?.username || 'testuser',
-      password: data?.password || 'hashedpassword',
-      ...data,
+      email,
+      username,
+      password,
     },
   });
 };
 
-export const createTestDrawing = async (userId: string, data?: Partial<any>) => {
+export const createTestDrawing = async (
+  userId: string,
+  data?: Partial<any>,
+) => {
   return testPrisma.drawing.create({
     data: {
-      title: data?.title || 'Test Drawing',
-      content: data?.content || '{}',
+      title: data?.title || "Test Drawing",
+      content: data?.content || {
+        type: "excalidraw",
+        version: 2,
+        elements: [],
+        appState: {},
+      },
       userId,
+      version: 1,
       ...data,
     },
   });
