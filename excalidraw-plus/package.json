@@ -1,0 +1,58 @@
+{
+  "name": "excalidraw-plus",
+  "version": "1.0.0",
+  "private": true,
+  "homepage": ".",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not ie <= 11",
+      "not op_mini all",
+      "not safari < 12",
+      "not kaios <= 2.5",
+      "not edge < 79",
+      "not chrome < 70",
+      "not and_uc < 13",
+      "not samsung < 10"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "engines": {
+    "node": "18.0.0 - 22.x.x"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "*",
+    "@excalidraw/common": "*",
+    "@excalidraw/element": "*",
+    "@excalidraw/math": "*",
+    "@excalidraw/utils": "*",
+    "@excalidraw/random-username": "1.0.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-router-dom": "^6.20.0",
+    "@tanstack/react-query": "^5.0.0",
+    "zustand": "^4.4.0",
+    "axios": "^1.6.0",
+    "socket.io-client": "4.7.2"
+  },
+  "prettier": "@excalidraw/prettier-config",
+  "scripts": {
+    "build": "vite build",
+    "start": "yarn && vite --port 4417",
+    "start:production": "yarn build && yarn serve",
+    "serve": "npx http-server build -a localhost -p 4417 -o",
+    "preview": "vite preview --port 4417"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0",
+    "typescript": "^4.9.4"
+  }
+}

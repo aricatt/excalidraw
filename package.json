@@ -4,8 +4,10 @@
   "packageManager": "yarn@1.22.22",
   "workspaces": [
     "excalidraw-app",
+    "excalidraw-plus",
     "packages/*",
-    "examples/*"
+    "examples/*",
+    "servers/*"
   ],
   "devDependencies": {
     "@babel/preset-env": "7.26.9",
@@ -61,7 +63,9 @@
     "build": "yarn --cwd ./excalidraw-app build",
     "build:preview": "yarn --cwd ./excalidraw-app build:preview",
     "start": "yarn --cwd ./excalidraw-app start",
+    "start:plus": "yarn --cwd ./excalidraw-plus start",
     "start:production": "yarn --cwd ./excalidraw-app start:production",
+    "start:plus:production": "yarn --cwd ./excalidraw-plus start:production",
     "start:example": "yarn build:packages && yarn --cwd ./examples/with-script-in-browser start",
     "test:all": "yarn test:typecheck && yarn test:code && yarn test:other && yarn test:app --watch=false",
     "test:app": "vitest",
