@@ -31,14 +31,29 @@ const Auth: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const navigate = useNavigate();
-  const { login, setError, clearError, isAuthenticated } = useAuthStore();
+  const { login, setError, clearError, isAuthenticated, initializeAuth } = useAuthStore();
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // 初始化认证状态
+  useEffect(() => {
+    const initialize = async () => {
+      initializeAuth();
+      // 给一个短暂的延迟，确保状态更新完成
+      setTimeout(() => {
+        setIsInitializing(false);
+      }, 100);
+    };
+    initialize();
+  }, [initializeAuth]);
 
   // 如果已经登录，重定向到首页
   useEffect(() => {
-    if (isAuthenticated) {
+    console.log('🔍 Auth check:', { isInitializing, isAuthenticated });
+    if (!isInitializing && isAuthenticated) {
+      console.log('🚀 Redirecting to home page');
       navigate('/');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, isInitializing]);
 
   // 登录 mutation
   const loginMutation = useMutation({
@@ -136,6 +151,18 @@ const Auth: React.FC = () => {
   };
 
   const isLoading = loginMutation.isPending || registerMutation.isPending;
+
+  // 如果正在初始化，显示加载状态
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">

@@ -25,6 +25,7 @@ interface AuthActions {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   clearError: () => void;
+  initializeAuth: () => void;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(
@@ -71,6 +72,48 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       setError: (error) => set({ error }),
       
       clearError: () => set({ error: null }),
+      
+      initializeAuth: () => {
+        console.log('🔄 Initializing auth...');
+        const token = localStorage.getItem('auth_token');
+        const user = localStorage.getItem('user');
+        
+        console.log('📦 Token from localStorage:', token ? 'exists' : 'null');
+        console.log('👤 User from localStorage:', user ? 'exists' : 'null');
+        
+        if (!token || token === 'null' || token === 'undefined') {
+          console.log('❌ No valid token, setting unauthenticated');
+          set({ isAuthenticated: false, user: null, token: null });
+        } else {
+          // 如果有token，检查用户数据
+          try {
+            const parsedUser = user ? JSON.parse(user) : null;
+            
+            // 必须同时有token和用户数据才认为是已登录
+            if (parsedUser && parsedUser.id) {
+              console.log('✅ Restoring auth state with token and user');
+              set({ 
+                isAuthenticated: true, 
+                user: parsedUser, 
+                token: token 
+              });
+            } else {
+              console.log('❌ Token exists but no valid user data, clearing auth');
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('user');
+              localStorage.removeItem('auth-storage');
+              set({ isAuthenticated: false, user: null, token: null });
+            }
+          } catch (error) {
+            console.log('💥 Error parsing user data, clearing auth');
+            // 如果用户数据解析失败，清除所有认证信息
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('auth-storage');
+            set({ isAuthenticated: false, user: null, token: null });
+          }
+        }
+      },
     }),
     {
       name: 'auth-storage',
