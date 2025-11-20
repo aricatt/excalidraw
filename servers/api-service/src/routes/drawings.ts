@@ -14,6 +14,9 @@ const createDrawingSchema = z.object({
   }),
   thumbnail: z.string().optional(),
   isPublic: z.boolean().default(false),
+  workspaceId: z.string().optional(),
+  collectionId: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
 });
 
 const updateDrawingSchema = createDrawingSchema.partial();
@@ -23,6 +26,9 @@ const getDrawingsQuerySchema = z.object({
   limit: z.string().transform(Number).default('10'),
   search: z.string().optional(),
   isPublic: z.string().transform(Boolean).optional(),
+  workspaceId: z.string().optional(),
+  collectionId: z.string().optional(),
+  tagId: z.string().optional(),
 });
 
 // JWT 认证中间件
@@ -40,7 +46,7 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: requireAuth,
   }, async (request: any, reply) => {
     try {
-      const { page = 1, limit = 10, search, isPublic } = request.query;
+      const { page = 1, limit = 10, search, isPublic, workspaceId, collectionId, tagId } = request.query;
       const userId = request.user.userId;
       const pageNum = Number(page);
       const limitNum = Number(limit);
@@ -62,6 +68,20 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
         where.isPublic = isPublic;
       }
 
+      if (workspaceId) {
+        where.workspaceId = workspaceId;
+      }
+
+      if (collectionId) {
+        where.collectionId = collectionId;
+      }
+
+      if (tagId) {
+        where.tags = {
+          some: { tagId },
+        };
+      }
+
       // 获取绘图列表
       const [drawings, total] = await Promise.all([
         fastify.prisma.drawing.findMany({
@@ -73,8 +93,28 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
             thumbnail: true,
             isPublic: true,
             version: true,
+            workspaceId: true,
+            collectionId: true,
             createdAt: true,
             updatedAt: true,
+            collection: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
+            tags: {
+              select: {
+                tag: {
+                  select: {
+                    id: true,
+                    name: true,
+                    color: true,
+                  },
+                },
+              },
+            },
           },
           orderBy: { updatedAt: 'desc' },
           skip: offset,
@@ -106,13 +146,18 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request: any, reply) => {
     try {
       const userId = request.user.userId;
-      const drawingData = request.body;
+      const { tagIds, ...drawingData } = request.body;
 
       const drawing = await fastify.prisma.drawing.create({
         data: {
           ...drawingData,
           userId,
           version: 1,
+          tags: tagIds && tagIds.length > 0 ? {
+            create: tagIds.map((tagId: string) => ({
+              tag: { connect: { id: tagId } },
+            })),
+          } : undefined,
         },
         select: {
           id: true,
@@ -122,8 +167,28 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
           thumbnail: true,
           isPublic: true,
           version: true,
+          workspaceId: true,
+          collectionId: true,
           createdAt: true,
           updatedAt: true,
+          collection: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+            },
+          },
+          tags: {
+            select: {
+              tag: {
+                select: {
+                  id: true,
+                  name: true,
+                  color: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -138,7 +203,7 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
           details: error.errors,
         });
       }
-      
+
       fastify.log.error(error);
       return reply.code(500).send({
         error: 'Internal server error',
@@ -248,7 +313,7 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
           details: error.errors,
         });
       }
-      
+
       fastify.log.error(error);
       return reply.code(500).send({
         error: 'Internal server error',
@@ -348,7 +413,7 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
 
         reply.header('Content-Type', 'application/json');
         reply.header('Content-Disposition', `attachment; filename="${drawing.title}.excalidraw"`);
-        
+
         return reply.send(exportData);
       } else {
         // 对于 PNG 和 SVG 导出，返回绘图数据供前端处理

@@ -40,47 +40,48 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       // Actions
       setUser: (user) => set({ user }),
-      
+
       setToken: (token) => {
         localStorage.setItem('auth_token', token);
         set({ token });
       },
-      
+
       login: (user, token) => {
         localStorage.setItem('auth_token', token);
-        set({ 
-          user, 
-          token, 
-          isAuthenticated: true, 
-          error: null 
+        localStorage.setItem('user', JSON.stringify(user));
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+          error: null
         });
       },
-      
+
       logout: () => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
-        set({ 
-          user: null, 
-          token: null, 
-          isAuthenticated: false, 
-          error: null 
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          error: null
         });
       },
-      
+
       setLoading: (isLoading) => set({ isLoading }),
-      
+
       setError: (error) => set({ error }),
-      
+
       clearError: () => set({ error: null }),
-      
+
       initializeAuth: () => {
         console.log('🔄 Initializing auth...');
         const token = localStorage.getItem('auth_token');
         const user = localStorage.getItem('user');
-        
+
         console.log('📦 Token from localStorage:', token ? 'exists' : 'null');
         console.log('👤 User from localStorage:', user ? 'exists' : 'null');
-        
+
         if (!token || token === 'null' || token === 'undefined') {
           console.log('❌ No valid token, setting unauthenticated');
           set({ isAuthenticated: false, user: null, token: null });
@@ -88,14 +89,14 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           // 如果有token，检查用户数据
           try {
             const parsedUser = user ? JSON.parse(user) : null;
-            
+
             // 必须同时有token和用户数据才认为是已登录
             if (parsedUser && parsedUser.id) {
               console.log('✅ Restoring auth state with token and user');
-              set({ 
-                isAuthenticated: true, 
-                user: parsedUser, 
-                token: token 
+              set({
+                isAuthenticated: true,
+                user: parsedUser,
+                token: token
               });
             } else {
               console.log('❌ Token exists but no valid user data, clearing auth');
@@ -117,10 +118,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
-        user: state.user, 
-        token: state.token, 
-        isAuthenticated: state.isAuthenticated 
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated
       }),
     }
   )
