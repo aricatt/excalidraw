@@ -22,6 +22,7 @@ model User {
   drawings  Drawing[]
   sessions  Session[]
   collaborations Collaboration[]
+  files     File[]
 
   @@map("users")
 }
@@ -126,13 +127,17 @@ model DrawingExport {
 
 // 通用文件存储表
 model File {
-  id        String   @id @default(cuid())
-  filename  String
+  id           String   @id @default(cuid())
+  filename     String
   originalName String
-  mimeType  String
-  size      Int
-  url       String
-  createdAt DateTime @default(now())
+  mimeType     String
+  size         Int
+  path         String   // 文件存储路径
+  userId       String   // 文件所有者
+  createdAt    DateTime @default(now())
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("files")
 }

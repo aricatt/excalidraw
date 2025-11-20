@@ -1,5 +1,6 @@
 import { beforeAll, afterAll, beforeEach } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 // 测试数据库实例
 export const testPrisma = new PrismaClient({
@@ -37,15 +38,25 @@ beforeEach(async () => {
 
 // 测试工具函数
 export const createTestUser = async (
-  email = "test@example.com",
-  username = "testuser",
-  password = "hashedpassword",
+  data: {
+    email?: string;
+    username?: string;
+    password?: string;
+  } = {}
 ) => {
+  const {
+    email = "test@excalidraw.com",
+    username = "testuser", 
+    password = "password123"
+  } = data;
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
   return testPrisma.user.create({
     data: {
       email,
       username,
-      password,
+      password: hashedPassword,
     },
   });
 };

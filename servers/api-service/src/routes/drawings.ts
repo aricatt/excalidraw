@@ -290,6 +290,85 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
+  // 导出绘图
+  fastify.get('/:id/export', {
+    preHandler: requireAuth,
+  }, async (request: any, reply) => {
+    try {
+      const { id } = request.params;
+      const { format = 'json' } = request.query;
+      const userId = request.user.userId;
+
+      // 验证导出格式
+      if (!['json', 'png', 'svg'].includes(format)) {
+        return reply.code(400).send({
+          error: 'Invalid export format. Supported formats: json, png, svg',
+        });
+      }
+
+      // 获取绘图数据
+      const drawing = await fastify.prisma.drawing.findFirst({
+        where: {
+          id,
+          OR: [
+            { userId }, // 用户自己的绘图
+            { isPublic: true }, // 或公开的绘图
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          content: true,
+          isPublic: true,
+          user: {
+            select: {
+              username: true,
+            },
+          },
+        },
+      });
+
+      if (!drawing) {
+        return reply.code(404).send({
+          error: 'Drawing not found',
+        });
+      }
+
+      // 根据格式返回数据
+      if (format === 'json') {
+        const exportData = {
+          type: 'excalidraw',
+          version: 2,
+          source: 'https://excalidraw.com',
+          elements: drawing.content.elements || [],
+          appState: drawing.content.appState || {},
+          files: null,
+        };
+
+        reply.header('Content-Type', 'application/json');
+        reply.header('Content-Disposition', `attachment; filename="${drawing.title}.excalidraw"`);
+        
+        return reply.send(exportData);
+      } else {
+        // 对于 PNG 和 SVG 导出，返回绘图数据供前端处理
+        // 实际的图像生成需要在前端使用 Excalidraw 的导出功能
+        return reply.send({
+          message: `Export format ${format} requires client-side processing`,
+          drawingData: {
+            elements: drawing.content.elements || [],
+            appState: drawing.content.appState || {},
+          },
+          exportFormat: format,
+        });
+      }
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({
+        error: 'Internal server error',
+      });
+    }
+  });
 };
 
 export default drawingRoutes;
