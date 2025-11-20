@@ -341,8 +341,8 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
           type: 'excalidraw',
           version: 2,
           source: 'https://excalidraw.com',
-          elements: drawing.content.elements || [],
-          appState: drawing.content.appState || {},
+          elements: (drawing.content as any)?.elements || [],
+          appState: (drawing.content as any)?.appState || {},
           files: null,
         };
 
@@ -356,8 +356,8 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.send({
           message: `Export format ${format} requires client-side processing`,
           drawingData: {
-            elements: drawing.content.elements || [],
-            appState: drawing.content.appState || {},
+            elements: (drawing.content as any)?.elements || [],
+            appState: (drawing.content as any)?.appState || {},
           },
           exportFormat: format,
         });

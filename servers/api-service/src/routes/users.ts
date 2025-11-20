@@ -214,7 +214,7 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
 
       const updatedUser = await fastify.prisma.user.update({
         where: { id: userId },
-        data: { avatar },
+        data: { avatar: avatar || null },
         select: {
           id: true,
           email: true,

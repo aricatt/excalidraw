@@ -136,11 +136,21 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       // 设置响应头
-      reply.header('Content-Type', file.mimetype);
+      reply.header('Content-Type', file.mimeType);
       reply.header('Content-Disposition', `attachment; filename="${file.originalName}"`);
 
-      // 发送文件
-      return reply.sendFile(path.basename(file.path), path.dirname(file.path));
+      // 发送文件 (暂时返回文件信息，稍后实现文件下载)
+      return reply.send({ 
+        message: 'File download not implemented yet',
+        file: {
+          id: file.id,
+          filename: file.filename,
+          originalName: file.originalName,
+          mimeType: file.mimeType,
+          size: file.size,
+          path: file.path
+        }
+      });
     } catch (error) {
       fastify.log.error(error);
       return reply.code(500).send({
@@ -220,7 +230,7 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       try {
         await fs.unlink(file.path);
       } catch (error) {
-        fastify.log.warn(`Failed to delete file from disk: ${file.path}`, error);
+        fastify.log.warn(`Failed to delete file from disk: ${file.path}`);
       }
 
       // 删除数据库记录

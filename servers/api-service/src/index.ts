@@ -3,7 +3,12 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
+// import staticFiles from '@fastify/static';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
+
+// 导入类型声明
+// import './types/fastify.js';
 
 // 导入路由
 import authRoutes from './routes/auth.js';
@@ -44,6 +49,11 @@ await fastify.register(multipart, {
 });
 
 await fastify.register(websocket);
+
+// await fastify.register(staticFiles, {
+//   root: path.join(process.cwd(), 'uploads'),
+//   prefix: '/uploads/',
+// });
 
 // 添加 Prisma 到 Fastify 实例
 fastify.decorate('prisma', prisma);
