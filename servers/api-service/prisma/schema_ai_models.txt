@@ -1,0 +1,31 @@
+// AI 偏好设置表
+model AIPreferences {
+  id          String   @id @default(cuid())
+  workspaceId String   @unique
+  aiEnabled   Boolean  @default(false)
+  services    Json?    // { speechRecognition: true, textGeneration: false, ... }
+  privacy     Json?    // { dataSharing: false, localProcessing: true, ... }
+  quotas      Json?    // { dailyRequests: 100, monthlyRequests: 3000, ... }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联关系
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("ai_preferences")
+}
+
+// AI 使用日志表
+model AIUsageLog {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  userId         String
+  feature        String   // "speech_recognition" | "text_generation" | "layout_optimization"
+  requestData    Json?
+  responseData   Json?
+  processingTime Int?     // 毫秒
+  cost           Float?   // 费用（如果有）
+  timestamp      DateTime @default(now())
+
+  @@map("ai_usage_logs")
+}

@@ -10,19 +10,23 @@ datasource db {
 
 // 用户表
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String   @unique
+  username    String   @unique
+  password    String
+  avatar      String?
+  preferences Json?    // 用户偏好设置 (theme, language)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // 关联关系
-  drawings  Drawing[]
-  sessions  Session[]
-  collaborations Collaboration[]
-  files     File[]
+  drawings           Drawing[]
+  sessions           Session[]
+  collaborations     Collaboration[]
+  files              File[]
+  ownedWorkspaces    Workspace[]
+  workspaceMemberships WorkspaceMember[]
+  workspaceInvitations WorkspaceInvitation[]
 
   @@map("users")
 }
@@ -41,6 +45,83 @@ model Session {
   @@map("sessions")
 }
 
+// 工作空间表
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  logo        String?
+  ownerId     String
+  settings    Json?    // AI 偏好、公开访问等设置
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联关系
+  owner       User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members     WorkspaceMember[]
+  invitations WorkspaceInvitation[]
+  collections Collection[]
+  aiPreferences AIPreferences?
+
+  @@map("workspaces")
+}
+
+// 工作空间成员表
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String   // "owner" | "admin" | "member" | "viewer"
+  joinedAt    DateTime @default(now())
+  invitedBy   String?
+
+  // 关联关系
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// 工作空间邀请表
+model WorkspaceInvitation {
+  id          String   @id @default(cuid())
+  workspaceId String
+  email       String
+  role        String   // "admin" | "member" | "viewer"
+  token       String   @unique
+  expiresAt   DateTime
+  invitedBy   String
+  status      String   @default("pending") // "pending" | "accepted" | "expired"
+  createdAt   DateTime @default(now())
+
+  // 关联关系
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  inviter   User      @relation(fields: [invitedBy], references: [id])
+
+  @@map("workspace_invitations")
+}
+
+// 集合表
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  workspaceId String
+  ownerId     String
+  isDefault   Boolean  @default(false) // Private, Main 等默认集合
+  visibility  String   @default("private") // "private" | "team" | "public"
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联关系
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  drawings  Drawing[]
+
+  @@map("collections")
+}
+
 // 绘图数据表
 model Drawing {
   id          String   @id @default(cuid())
@@ -50,12 +131,15 @@ model Drawing {
   thumbnail   String?  // 缩略图 URL
   isPublic    Boolean  @default(false)
   version     Int      @default(1) // 版本控制
+  workspaceId String?
+  collectionId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   userId      String
 
   // 关联关系
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collection    Collection?     @relation(fields: [collectionId], references: [id], onDelete: SetNull)
   collaborations Collaboration[]
   tags          DrawingTag[]
   exports       DrawingExport[] // 导出文件关联
@@ -140,4 +224,36 @@ model File {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("files")
+}
+
+// AI 偏好设置表
+model AIPreferences {
+  id          String   @id @default(cuid())
+  workspaceId String   @unique
+  aiEnabled   Boolean  @default(false)
+  services    Json?    // { speechRecognition: true, textGeneration: false, ... }
+  privacy     Json?    // { dataSharing: false, localProcessing: true, ... }
+  quotas      Json?    // { dailyRequests: 100, monthlyRequests: 3000, ... }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 关联关系
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("ai_preferences")
+}
+
+// AI 使用日志表
+model AIUsageLog {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  userId         String
+  feature        String   // "speech_recognition" | "text_generation" | "layout_optimization"
+  requestData    Json?
+  responseData   Json?
+  processingTime Int?     // 毫秒
+  cost           Float?   // 费用（如果有）
+  timestamp      DateTime @default(now())
+
+  @@map("ai_usage_logs")
 }

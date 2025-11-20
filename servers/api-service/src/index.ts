@@ -16,6 +16,9 @@ import userRoutes from './routes/users.js';
 import drawingRoutes from './routes/drawings.js';
 import fileRoutes from './routes/files.js';
 import collaborationRoutes from './routes/collaboration.js';
+import workspaceRoutes from './routes/workspaces.js';
+import collectionRoutes from './routes/collections.js';
+import tagRoutes from './routes/tags.js';
 
 // 环境变量
 const PORT = parseInt(process.env.PORT || '3001');
@@ -64,11 +67,14 @@ await fastify.register(userRoutes, { prefix: '/api/users' });
 await fastify.register(drawingRoutes, { prefix: '/api/drawings' });
 await fastify.register(fileRoutes, { prefix: '/api/files' });
 await fastify.register(collaborationRoutes, { prefix: '/api/collaboration' });
+await fastify.register(workspaceRoutes, { prefix: '/api/workspaces' });
+await fastify.register(collectionRoutes, { prefix: '/api/collections' });
+await fastify.register(tagRoutes, { prefix: '/api/tags' });
 
 // 健康检查
 fastify.get('/health', async () => {
-  return { 
-    status: 'ok', 
+  return {
+    status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'excalidraw-plus-api'
   };
@@ -76,7 +82,7 @@ fastify.get('/health', async () => {
 
 // 根路径
 fastify.get('/', async () => {
-  return { 
+  return {
     message: 'Excalidraw Plus API Service',
     version: '1.0.0',
     docs: '/docs'
