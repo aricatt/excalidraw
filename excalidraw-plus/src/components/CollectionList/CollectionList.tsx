@@ -62,8 +62,8 @@ const CollectionList: React.FC<CollectionListProps> = ({
             <button
                 onClick={() => onSelectCollection(null)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${selectedCollectionId === null
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
                     }`}
             >
                 <div className="flex items-center gap-2">
@@ -75,14 +75,16 @@ const CollectionList: React.FC<CollectionListProps> = ({
             {/* Collections */}
             {collections.map((collection) => (
                 <div key={collection.id} className="relative">
-                    <button
-                        onClick={() => onSelectCollection(collection.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors group ${selectedCollectionId === collection.id
+                    <div
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors group cursor-pointer ${selectedCollectionId === collection.id
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
                             }`}
                     >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div
+                            className="flex items-center gap-2 flex-1 min-w-0"
+                            onClick={() => onSelectCollection(collection.id)}
+                        >
                             <div
                                 className="w-4 h-4 rounded flex-shrink-0"
                                 style={{ backgroundColor: collection.color || '#3B82F6' }}
@@ -95,13 +97,13 @@ const CollectionList: React.FC<CollectionListProps> = ({
                             )}
                         </div>
 
-                        <button
+                        <div
                             onClick={(e) => handleMenuToggle(e, collection.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity cursor-pointer"
                         >
                             <MoreVertical className="w-4 h-4" />
-                        </button>
-                    </button>
+                        </div>
+                    </div>
 
                     {/* Dropdown Menu */}
                     {openMenuId === collection.id && (
