@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical } from 'lucide-react';
+import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical, FolderInput } from 'lucide-react';
 import { drawingAPI, workspaceAPI, collectionAPI } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import CollectionDialog from '../CollectionDialog/CollectionDialog';
 import CollectionList from '../CollectionList/CollectionList';
+import CollectionSelector from '../CollectionSelector/CollectionSelector';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const Dashboard: React.FC = () => {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<any>(null);
-  const [drawingMenuId, setDrawingMenuId] = useState<string | null>(null);
+  const [moveMenuId, setMoveMenuId] = useState<string | null>(null);
 
   // 初始化认证状态
   useEffect(() => {
@@ -159,7 +160,7 @@ const Dashboard: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drawings'] });
       queryClient.invalidateQueries({ queryKey: ['collections'] });
-      setDrawingMenuId(null);
+      setMoveMenuId(null);
     },
   });
 
@@ -245,6 +246,7 @@ const Dashboard: React.FC = () => {
             onSelectCollection={setSelectedCollectionId}
             onEditCollection={handleEditCollection}
             onDeleteCollection={(id) => deleteCollectionMutation.mutate(id)}
+            onDropDrawing={handleMoveToCollection}
           />
         </div>
 
@@ -321,60 +323,91 @@ const Dashboard: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {drawings.map((drawing: any) => (
-                <Link
+                <div
                   key={drawing.id}
-                  to={`/editor/${drawing.id}`}
-                  className="group bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all overflow-hidden"
+                  className="relative"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('drawingId', drawing.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
                 >
-                  {/* Thumbnail */}
-                  <div className="aspect-video bg-gray-100 flex items-center justify-center relative">
-                    {drawing.thumbnail ? (
-                      <img
-                        src={drawing.thumbnail}
-                        alt={drawing.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <FileText className="w-12 h-12 text-gray-400" />
-                    )}
+                  <Link
+                    to={`/editor/${drawing.id}`}
+                    className="group bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all overflow-hidden block cursor-move"
+                  >
+                    {/* Thumbnail */}
+                    <div className="aspect-video bg-gray-100 flex items-center justify-center relative">
+                      {drawing.thumbnail ? (
+                        <img
+                          src={drawing.thumbnail}
+                          alt={drawing.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <FileText className="w-12 h-12 text-gray-400" />
+                      )}
 
-                    {/* Collection Badge */}
-                    {drawing.collection && (
-                      <div
-                        className="absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium text-white"
-                        style={{ backgroundColor: drawing.collection.color || '#3B82F6' }}
-                      >
-                        {drawing.collection.name}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-4">
-                    <h3 className="font-medium text-gray-900 truncate group-hover:text-blue-600">
-                      {drawing.title}
-                    </h3>
-                    {drawing.description && (
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                        {drawing.description}
-                      </p>
-                    )}
-                    <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-                      <span>
-                        {new Date(drawing.updatedAt).toLocaleDateString()}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => handleDeleteDrawing(drawing.id, e)}
-                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Delete drawing"
+                      {/* Collection Badge */}
+                      {drawing.collection && (
+                        <div
+                          className="absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium text-white"
+                          style={{ backgroundColor: drawing.collection.color || '#3B82F6' }}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          {drawing.collection.name}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-4">
+                      <h3 className="font-medium text-gray-900 truncate group-hover:text-blue-600">
+                        {drawing.title}
+                      </h3>
+                      {drawing.description && (
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                          {drawing.description}
+                        </p>
+                      )}
+                      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                        <span>
+                          {new Date(drawing.updatedAt).toLocaleDateString()}
+                        </span>
+                        <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setMoveMenuId(moveMenuId === drawing.id ? null : drawing.id);
+                              }}
+                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Move to collection"
+                            >
+                              <FolderInput className="w-4 h-4" />
+                            </button>
+
+                            {moveMenuId === drawing.id && (
+                              <CollectionSelector
+                                collections={collections}
+                                currentCollectionId={drawing.collectionId}
+                                onSelect={(collectionId) => handleMoveToCollection(drawing.id, collectionId)}
+                                onClose={() => setMoveMenuId(null)}
+                              />
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteDrawing(drawing.id, e)}
+                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Delete drawing"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               ))}
             </div>
           )}

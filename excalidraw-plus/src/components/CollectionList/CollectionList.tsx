@@ -17,6 +17,7 @@ interface CollectionListProps {
     onSelectCollection: (collectionId: string | null) => void;
     onEditCollection: (collection: Collection) => void;
     onDeleteCollection: (collectionId: string) => void;
+    onDropDrawing?: (drawingId: string, collectionId: string | null) => void;
 }
 
 const CollectionList: React.FC<CollectionListProps> = ({
@@ -25,8 +26,10 @@ const CollectionList: React.FC<CollectionListProps> = ({
     onSelectCollection,
     onEditCollection,
     onDeleteCollection,
+    onDropDrawing,
 }) => {
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
+    const [dragOverId, setDragOverId] = React.useState<string | null>(null);
 
     const handleMenuToggle = (e: React.MouseEvent, collectionId: string) => {
         e.stopPropagation();
@@ -47,6 +50,29 @@ const CollectionList: React.FC<CollectionListProps> = ({
         }
     };
 
+    const handleDragOver = (e: React.DragEvent, collectionId: string | null) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverId(collectionId);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverId(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, collectionId: string | null) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverId(null);
+
+        const drawingId = e.dataTransfer.getData('drawingId');
+        if (drawingId && onDropDrawing) {
+            onDropDrawing(drawingId, collectionId);
+        }
+    };
+
     // Close menu when clicking outside
     React.useEffect(() => {
         const handleClickOutside = () => setOpenMenuId(null);
@@ -61,9 +87,13 @@ const CollectionList: React.FC<CollectionListProps> = ({
             {/* All Drawings */}
             <button
                 onClick={() => onSelectCollection(null)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${selectedCollectionId === null
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100'
+                onDragOver={(e) => handleDragOver(e, null)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, null)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${dragOverId === null ? 'ring-2 ring-blue-500 bg-blue-100' : ''
+                    } ${selectedCollectionId === null
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100'
                     }`}
             >
                 <div className="flex items-center gap-2">
@@ -76,7 +106,11 @@ const CollectionList: React.FC<CollectionListProps> = ({
             {collections.map((collection) => (
                 <div key={collection.id} className="relative">
                     <div
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors group cursor-pointer ${selectedCollectionId === collection.id
+                        onDragOver={(e) => handleDragOver(e, collection.id)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, collection.id)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors group cursor-pointer ${dragOverId === collection.id ? 'ring-2 ring-blue-500 bg-blue-100' : ''
+                            } ${selectedCollectionId === collection.id
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
                             }`}
