@@ -82,6 +82,9 @@ export const drawingAPI = {
   assignTags: (id: string, tagIds: string[]) =>
     api.post(`/drawings/${id}/tags`, { tagIds }),
 
+  assignTag: (id: string, tagId: string) =>
+    api.post(`/drawings/${id}/tags`, { tagIds: [tagId] }),
+
   removeTag: (id: string, tagId: string) =>
     api.delete(`/drawings/${id}/tags/${tagId}`),
 };

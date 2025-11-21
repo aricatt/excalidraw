@@ -18,25 +18,43 @@ const requireAuth = async (request: any, reply: any) => {
     }
 };
 
-const tagRoutes: FastifyPluginAsync = async(fastify) => {
+const tagRoutes: FastifyPluginAsync = async (fastify) => {
     // 获取所有标签
     fastify.get('/', {
         preHandler: requireAuth,
     }, async (request: any, reply) => {
         try {
+            const userId = request.user.userId;
+
+            // 获取所有标签
             const tags = await fastify.prisma.tag.findMany({
                 select: {
                     id: true,
                     name: true,
                     color: true,
-                    _count: {
-                        select: { drawings: true },
-                    },
                 },
                 orderBy: { name: 'asc' },
             });
 
-            return reply.send({ tags });
+            // 为每个标签计算当前用户的绘图数量
+            const tagsWithCount = await Promise.all(
+                tags.map(async (tag) => {
+                    const count = await fastify.prisma.drawingTag.count({
+                        where: {
+                            tagId: tag.id,
+                            drawing: {
+                                userId: userId,
+                            },
+                        },
+                    });
+                    return {
+                        ...tag,
+                        _count: { drawings: count },
+                    };
+                })
+            );
+
+            return reply.send({ tags: tagsWithCount });
         } catch (error) {
             fastify.log.error(error);
             return reply.code(500).send({

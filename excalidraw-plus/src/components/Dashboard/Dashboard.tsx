@@ -84,13 +84,26 @@ const Dashboard: React.FC = () => {
     enabled: isAuthenticated && !!defaultWorkspaceId,
   });
 
+  // 获取标签列表
+  const { data: tagsData } = useQuery({
+    queryKey: ['tags'],
+    queryFn: async () => {
+      const response = await tagAPI.getTags();
+      return response.data;
+    },
+    enabled: isAuthenticated,
+  });
+
   // 获取绘图列表
   const { data: drawingsData, isLoading: isLoadingDrawings } = useQuery({
-    queryKey: ['drawings', selectedCollectionId, searchQuery],
+    queryKey: ['drawings', selectedCollectionId, selectedTagId, searchQuery],
     queryFn: async () => {
       const params: any = { limit: 50 };
       if (selectedCollectionId) {
         params.collectionId = selectedCollectionId;
+      }
+      if (selectedTagId) {
+        params.tagId = selectedTagId;
       }
       if (searchQuery) {
         params.search = searchQuery;
@@ -178,6 +191,23 @@ const Dashboard: React.FC = () => {
     },
   });
 
+  // 切换绘图标签
+  const toggleTagMutation = useMutation({
+    mutationFn: async ({ drawingId, tagId, isAssigned }: { drawingId: string; tagId: string; isAssigned: boolean }) => {
+      if (isAssigned) {
+        // Remove tag
+        return drawingAPI.removeTag(drawingId, tagId);
+      } else {
+        // Assign tag
+        return drawingAPI.assignTag(drawingId, tagId);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drawings'] });
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+    },
+  });
+
   const handleLogout = () => {
     logout();
     navigate('/auth');
@@ -217,8 +247,21 @@ const Dashboard: React.FC = () => {
     moveToCollectionMutation.mutate({ drawingId, collectionId });
   };
 
+  // Handle collection selection - clear tag filter
+  const handleSelectCollection = (collectionId: string | null) => {
+    setSelectedCollectionId(collectionId);
+    setSelectedTagId(null); // Clear tag selection when selecting a collection
+  };
+
+  // Handle tag selection - clear collection filter
+  const handleSelectTag = (tagId: string | null) => {
+    setSelectedTagId(tagId);
+    setSelectedCollectionId(null); // Clear collection selection when selecting a tag
+  };
+
   const drawings = drawingsData?.drawings || [];
   const collections = collectionsData?.collections || [];
+  const tags = tagsData?.tags || [];
 
   if (!isAuthenticated) {
     return null;
@@ -257,11 +300,42 @@ const Dashboard: React.FC = () => {
           <CollectionList
             collections={collections}
             selectedCollectionId={selectedCollectionId}
-            onSelectCollection={setSelectedCollectionId}
+            onSelectCollection={handleSelectCollection}
             onEditCollection={handleEditCollection}
             onDeleteCollection={(id) => deleteCollectionMutation.mutate(id)}
             onDropDrawing={handleMoveToCollection}
           />
+
+          {/* Tags */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-700 uppercase">Tags</h2>
+              <button
+                onClick={() => {
+                  setEditingTag(null);
+                  setIsTagDialogOpen(true);
+                }}
+                className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                title="Create tag"
+              >
+                <Tags className="w-4 h-4" />
+              </button>
+            </div>
+
+            <TagList
+              tags={tags}
+              selectedTagId={selectedTagId}
+              onSelectTag={handleSelectTag}
+              onEditTag={(tag) => {
+                setEditingTag(tag);
+                setIsTagDialogOpen(true);
+              }}
+              onDeleteTag={(id) => {
+                // TODO: Add delete tag mutation
+                console.log('Delete tag:', id);
+              }}
+            />
+          </div>
         </div>
 
         {/* Footer */}
@@ -400,6 +474,38 @@ const Dashboard: React.FC = () => {
                           {new Date(drawing.updatedAt).toLocaleDateString()}
                         </span>
                         <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
+                          {/* Tag Button */}
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setTagMenuId(tagMenuId === drawing.id ? null : drawing.id);
+                              }}
+                              className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                              title="Manage tags"
+                            >
+                              <TagIcon className="w-4 h-4" />
+                            </button>
+
+                            {tagMenuId === drawing.id && (
+                              <TagSelector
+                                tags={tags}
+                                selectedTagIds={drawing.tags?.map((t: any) => t.tag.id) || []}
+                                onToggleTag={(tagId) => {
+                                  const isAssigned = drawing.tags?.some((t: any) => t.tag.id === tagId);
+                                  toggleTagMutation.mutate({
+                                    drawingId: drawing.id,
+                                    tagId,
+                                    isAssigned: !!isAssigned
+                                  });
+                                }}
+                                onClose={() => setTagMenuId(null)}
+                              />
+                            )}
+                          </div>
+
+                          {/* Move to Collection Button */}
                           <div className="relative">
                             <button
                               onClick={(e) => {
@@ -422,6 +528,8 @@ const Dashboard: React.FC = () => {
                               />
                             )}
                           </div>
+
+                          {/* Delete Button */}
                           <button
                             onClick={(e) => handleDeleteDrawing(drawing.id, e)}
                             className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -451,6 +559,21 @@ const Dashboard: React.FC = () => {
         initialData={editingCollection}
         title={editingCollection ? 'Edit Collection' : 'Create Collection'}
         submitLabel={editingCollection ? 'Update' : 'Create'}
+      />
+
+      {/* Tag Dialog */}
+      <TagDialog
+        isOpen={isTagDialogOpen}
+        onClose={() => {
+          setIsTagDialogOpen(false);
+          setEditingTag(null);
+        }}
+        onSave={(data) => {
+          // TODO: Add create/update tag mutation
+          console.log('Save tag:', data);
+          setIsTagDialogOpen(false);
+        }}
+        tag={editingTag}
       />
     </div>
   );
