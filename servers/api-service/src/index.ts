@@ -6,6 +6,10 @@ import websocket from '@fastify/websocket';
 // import staticFiles from '@fastify/static';
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
+import dotenv from 'dotenv';
+
+// 加载环境变量
+dotenv.config();
 
 // 导入类型声明
 // import './types/fastify.js';
