@@ -7,6 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 import CollectionDialog from '../CollectionDialog/CollectionDialog';
 import CollectionList from '../CollectionList/CollectionList';
 import CollectionSelector from '../CollectionSelector/CollectionSelector';
+import SearchBar from '../SearchBar/SearchBar';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const Dashboard: React.FC = () => {
   const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<any>(null);
   const [moveMenuId, setMoveMenuId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 初始化认证状态
   useEffect(() => {
@@ -75,11 +77,14 @@ const Dashboard: React.FC = () => {
 
   // 获取绘图列表
   const { data: drawingsData, isLoading: isLoadingDrawings } = useQuery({
-    queryKey: ['drawings', selectedCollectionId],
+    queryKey: ['drawings', selectedCollectionId, searchQuery],
     queryFn: async () => {
       const params: any = { limit: 50 };
       if (selectedCollectionId) {
         params.collectionId = selectedCollectionId;
+      }
+      if (searchQuery) {
+        params.search = searchQuery;
       }
       const response = await drawingAPI.getDrawings(params);
       return response.data;
@@ -266,34 +271,46 @@ const Dashboard: React.FC = () => {
       <main className="flex-1 overflow-y-auto">
         {/* Header */}
         <header className="bg-white border-b px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {selectedCollectionId
-                  ? collections.find(c => c.id === selectedCollectionId)?.name || 'Collection'
-                  : 'All Drawings'}
-              </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {drawings.length} {drawings.length === 1 ? 'drawing' : 'drawings'}
-              </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedCollectionId
+                    ? collections.find((c: any) => c.id === selectedCollectionId)?.name || 'Collection'
+                    : 'All Drawings'}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {drawings.length} {drawings.length === 1 ? 'drawing' : 'drawings'}
+                  {searchQuery && ` matching "${searchQuery}"`}
+                </p>
+              </div>
+              <button
+                onClick={handleCreateDrawing}
+                disabled={createMutation.isPending}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    New Drawing
+                  </>
+                )}
+              </button>
             </div>
-            <button
-              onClick={handleCreateDrawing}
-              disabled={createMutation.isPending}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {createMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Drawing
-                </>
-              )}
-            </button>
+
+            {/* Search Bar */}
+            <div className="max-w-md">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search drawings by title..."
+              />
+            </div>
           </div>
         </header>
 
