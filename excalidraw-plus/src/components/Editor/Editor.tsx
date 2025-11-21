@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Excalidraw } from '@excalidraw/excalidraw';
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types';
-import { exportToBlob } from '@excalidraw/excalidraw';
+import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
 import { ArrowLeft, Save, Loader2, Check, Edit2 } from 'lucide-react';
 import { drawingAPI } from '../../lib/api';
 
@@ -13,7 +11,7 @@ const Editor: React.FC = () => {
   const queryClient = useQueryClient();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
+  const [excalidrawAPI, setExcalidrawAPI] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -21,15 +19,25 @@ const Editor: React.FC = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   // 获取绘图数据
-  const { data: drawingData, isLoading } = useQuery({
+  const { data: drawingData, isLoading, error } = useQuery({
     queryKey: ['drawing', id],
     queryFn: async () => {
       if (!id) return null;
+      console.log('Fetching drawing:', id);
       const response = await drawingAPI.getDrawing(id);
+      console.log('Drawing data:', response.data);
       return response.data;
     },
     enabled: !!id,
   });
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Editor mounted, id:', id);
+    console.log('Drawing data:', drawingData);
+    console.log('Is loading:', isLoading);
+    console.log('Error:', error);
+  }, [id, drawingData, isLoading, error]);
 
   // 加载标题
   useEffect(() => {

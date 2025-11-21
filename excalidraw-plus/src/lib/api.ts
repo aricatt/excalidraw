@@ -62,12 +62,12 @@ export const userAPI = {
 
 // 绘图相关 API
 export const drawingAPI = {
-  getDrawings: (params?: { page?: number; limit?: number; search?: string; collectionId?: string }) =>
+  getDrawings: (params?: { page?: number; limit?: number; search?: string; collectionId?: string; tagId?: string }) =>
     api.get('/drawings', { params }),
 
   getDrawing: (id: string) => api.get(`/drawings/${id}`),
 
-  createDrawing: (data: { title: string; content?: any; isPublic?: boolean; thumbnail?: string; collectionId?: string }) =>
+  createDrawing: (data: { title: string; content?: any; isPublic?: boolean; thumbnail?: string; collectionId?: string; tagIds?: string[] }) =>
     api.post('/drawings', data),
 
   updateDrawing: (id: string, data: { title?: string; content?: any; isPublic?: boolean; thumbnail?: string; collectionId?: string | null }) =>
@@ -77,6 +77,13 @@ export const drawingAPI = {
 
   exportDrawing: (id: string, format: 'json' | 'png' | 'svg' = 'json') =>
     api.get(`/drawings/${id}/export`, { params: { format } }),
+
+  // 标签管理
+  assignTags: (id: string, tagIds: string[]) =>
+    api.post(`/drawings/${id}/tags`, { tagIds }),
+
+  removeTag: (id: string, tagId: string) =>
+    api.delete(`/drawings/${id}/tags/${tagId}`),
 };
 
 // 文件相关 API

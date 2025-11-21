@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical, FolderInput } from 'lucide-react';
-import { drawingAPI, workspaceAPI, collectionAPI } from '../../lib/api';
+import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical, FolderInput, Tag as TagIcon, Tags } from 'lucide-react';
+import { drawingAPI, workspaceAPI, collectionAPI, tagAPI } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import CollectionDialog from '../CollectionDialog/CollectionDialog';
 import CollectionList from '../CollectionList/CollectionList';
 import CollectionSelector from '../CollectionSelector/CollectionSelector';
 import SearchBar from '../SearchBar/SearchBar';
+import TagDialog from '../TagDialog/TagDialog';
+import TagList from '../TagList/TagList';
+import TagSelector from '../TagSelector/TagSelector';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +22,12 @@ const Dashboard: React.FC = () => {
   const [editingCollection, setEditingCollection] = useState<any>(null);
   const [moveMenuId, setMoveMenuId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Tag states
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const [editingTag, setEditingTag] = useState<any>(null);
+  const [tagMenuId, setTagMenuId] = useState<string | null>(null);
 
   // 初始化认证状态
   useEffect(() => {
@@ -141,7 +150,7 @@ const Dashboard: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: async () => {
       const response = await drawingAPI.createDrawing({
-        title: `Untitled ${new Date().toLocaleString()}`,
+        title: `Untitled ${new Date().toLocaleString()} `,
         collectionId: selectedCollectionId || undefined,
         content: {
           type: 'excalidraw',
