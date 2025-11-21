@@ -62,15 +62,15 @@ export const userAPI = {
 
 // 绘图相关 API
 export const drawingAPI = {
-  getDrawings: (params?: { page?: number; limit?: number; search?: string }) =>
+  getDrawings: (params?: { page?: number; limit?: number; search?: string; collectionId?: string }) =>
     api.get('/drawings', { params }),
 
   getDrawing: (id: string) => api.get(`/drawings/${id}`),
 
-  createDrawing: (data: { title: string; content?: any; isPublic?: boolean; thumbnail?: string }) =>
+  createDrawing: (data: { title: string; content?: any; isPublic?: boolean; thumbnail?: string; collectionId?: string }) =>
     api.post('/drawings', data),
 
-  updateDrawing: (id: string, data: { title?: string; content?: any; isPublic?: boolean; thumbnail?: string }) =>
+  updateDrawing: (id: string, data: { title?: string; content?: any; isPublic?: boolean; thumbnail?: string; collectionId?: string | null }) =>
     api.put(`/drawings/${id}`, data),
 
   deleteDrawing: (id: string) => api.delete(`/drawings/${id}`),

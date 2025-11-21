@@ -1,14 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, LogOut, FileText, Trash2, Loader2 } from 'lucide-react';
-import { drawingAPI, workspaceAPI } from '../../lib/api';
+import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical } from 'lucide-react';
+import { drawingAPI, workspaceAPI, collectionAPI } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import CollectionDialog from '../CollectionDialog/CollectionDialog';
+import CollectionList from '../CollectionList/CollectionList';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, logout, initializeAuth } = useAuthStore();
+
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<any>(null);
+  const [drawingMenuId, setDrawingMenuId] = useState<string | null>(null);
 
   // 初始化认证状态
   useEffect(() => {
@@ -23,7 +30,7 @@ const Dashboard: React.FC = () => {
   }, [isAuthenticated, navigate]);
 
   // 获取工作空间列表
-  const { data: workspacesData } = useQuery({
+  const { data: workspacesData, isLoading: isLoadingWorkspaces } = useQuery({
     queryKey: ['workspaces'],
     queryFn: async () => {
       const response = await workspaceAPI.getWorkspaces();
@@ -32,14 +39,88 @@ const Dashboard: React.FC = () => {
     enabled: isAuthenticated,
   });
 
+  // 创建默认工作空间
+  const createWorkspaceMutation = useMutation({
+    mutationFn: () =>
+      workspaceAPI.createWorkspace({
+        name: 'My Workspace',
+        description: 'Default workspace',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] });
+    },
+  });
+
+  const workspaces = workspacesData?.workspaces || [];
+  const defaultWorkspaceId = workspaces[0]?.id;
+
+  // 自动创建默认工作空间(如果没有)
+  useEffect(() => {
+    if (isAuthenticated && !isLoadingWorkspaces && workspaces.length === 0 && !createWorkspaceMutation.isPending) {
+      createWorkspaceMutation.mutate();
+    }
+  }, [isAuthenticated, isLoadingWorkspaces, workspaces.length, createWorkspaceMutation]);
+
+  // 获取集合列表
+  const { data: collectionsData } = useQuery({
+    queryKey: ['collections', defaultWorkspaceId],
+    queryFn: async () => {
+      if (!defaultWorkspaceId) return { collections: [] };
+      const response = await collectionAPI.getCollections(defaultWorkspaceId);
+      return response.data;
+    },
+    enabled: isAuthenticated && !!defaultWorkspaceId,
+  });
+
   // 获取绘图列表
   const { data: drawingsData, isLoading: isLoadingDrawings } = useQuery({
-    queryKey: ['drawings'],
+    queryKey: ['drawings', selectedCollectionId],
     queryFn: async () => {
-      const response = await drawingAPI.getDrawings({ limit: 50 });
+      const params: any = { limit: 50 };
+      if (selectedCollectionId) {
+        params.collectionId = selectedCollectionId;
+      }
+      const response = await drawingAPI.getDrawings(params);
       return response.data;
     },
     enabled: isAuthenticated,
+  });
+
+  // 创建集合
+  const createCollectionMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; color?: string }) => {
+      if (!defaultWorkspaceId) {
+        throw new Error('No workspace available');
+      }
+      return collectionAPI.createCollection({
+        ...data,
+        workspaceId: defaultWorkspaceId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+  });
+
+  // 更新集合
+  const updateCollectionMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      collectionAPI.updateCollection(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      setEditingCollection(null);
+    },
+  });
+
+  // 删除集合
+  const deleteCollectionMutation = useMutation({
+    mutationFn: collectionAPI.deleteCollection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      if (selectedCollectionId) {
+        setSelectedCollectionId(null);
+      }
+    },
   });
 
   // 删除绘图
@@ -55,6 +136,7 @@ const Dashboard: React.FC = () => {
     mutationFn: async () => {
       const response = await drawingAPI.createDrawing({
         title: `Untitled ${new Date().toLocaleString()}`,
+        collectionId: selectedCollectionId || undefined,
         content: {
           type: 'excalidraw',
           version: 2,
@@ -67,6 +149,17 @@ const Dashboard: React.FC = () => {
     },
     onSuccess: (data) => {
       navigate(`/editor/${data.drawing.id}`);
+    },
+  });
+
+  // 移动绘图到集合
+  const moveToCollectionMutation = useMutation({
+    mutationFn: ({ drawingId, collectionId }: { drawingId: string; collectionId: string | null }) =>
+      drawingAPI.updateDrawing(drawingId, { collectionId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drawings'] });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      setDrawingMenuId(null);
     },
   });
 
@@ -87,86 +180,123 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleCreateCollection = (data: { name: string; description?: string; color?: string }) => {
+    createCollectionMutation.mutate(data);
+  };
+
+  const handleEditCollection = (collection: any) => {
+    setEditingCollection(collection);
+    setIsCollectionDialogOpen(true);
+  };
+
+  const handleUpdateCollection = (data: { name: string; description?: string; color?: string }) => {
+    if (editingCollection) {
+      updateCollectionMutation.mutate({
+        id: editingCollection.id,
+        data,
+      });
+    }
+  };
+
+  const handleMoveToCollection = (drawingId: string, collectionId: string | null) => {
+    moveToCollectionMutation.mutate({ drawingId, collectionId });
+  };
+
   const drawings = drawingsData?.drawings || [];
-  const workspaces = workspacesData?.workspaces || [];
+  const collections = collectionsData?.collections || [];
 
   if (!isAuthenticated) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Excalidraw Plus</h1>
-              {user && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Welcome back, {user.username}!
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleCreateDrawing}
-                disabled={createMutation.isPending}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Drawing
-                  </>
-                )}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b">
+          <h1 className="text-xl font-bold text-gray-900">Excalidraw Plus</h1>
+          {user && (
+            <p className="text-sm text-gray-600 mt-1 truncate">
+              {user.username}
+            </p>
+          )}
         </div>
-      </header>
+
+        {/* Collections */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700 uppercase">Collections</h2>
+            <button
+              onClick={() => {
+                setEditingCollection(null);
+                setIsCollectionDialogOpen(true);
+              }}
+              className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              title="Create collection"
+            >
+              <FolderPlus className="w-4 h-4" />
+            </button>
+          </div>
+
+          <CollectionList
+            collections={collections}
+            selectedCollectionId={selectedCollectionId}
+            onSelectCollection={setSelectedCollectionId}
+            onEditCollection={handleEditCollection}
+            onDeleteCollection={(id) => deleteCollectionMutation.mutate(id)}
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
+      </aside>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Workspaces Info */}
-        {workspaces.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Workspaces</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {workspaces.map((workspace: any) => (
-                <div
-                  key={workspace.id}
-                  className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-500 transition-colors"
-                >
-                  <h3 className="font-medium text-gray-900">{workspace.name}</h3>
-                  {workspace.description && (
-                    <p className="text-sm text-gray-600 mt-1">{workspace.description}</p>
-                  )}
-                  <div className="mt-2 text-xs text-gray-500">
-                    {workspace._count?.collections || 0} collections
-                  </div>
-                </div>
-              ))}
+      <main className="flex-1 overflow-y-auto">
+        {/* Header */}
+        <header className="bg-white border-b px-6 py-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {selectedCollectionId
+                  ? collections.find(c => c.id === selectedCollectionId)?.name || 'Collection'
+                  : 'All Drawings'}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {drawings.length} {drawings.length === 1 ? 'drawing' : 'drawings'}
+              </p>
             </div>
+            <button
+              onClick={handleCreateDrawing}
+              disabled={createMutation.isPending}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {createMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Drawing
+                </>
+              )}
+            </button>
           </div>
-        )}
+        </header>
 
-        {/* Drawings List */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Drawings</h2>
-
+        {/* Drawings Grid */}
+        <div className="p-6">
           {isLoadingDrawings ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -175,17 +305,21 @@ const Dashboard: React.FC = () => {
             <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No drawings yet</h3>
-              <p className="text-gray-600 mb-4">Create your first drawing to get started!</p>
+              <p className="text-gray-600 mb-4">
+                {selectedCollectionId
+                  ? 'This collection is empty. Create your first drawing!'
+                  : 'Create your first drawing to get started!'}
+              </p>
               <button
                 onClick={handleCreateDrawing}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Drawing
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {drawings.map((drawing: any) => (
                 <Link
                   key={drawing.id}
@@ -193,7 +327,7 @@ const Dashboard: React.FC = () => {
                   className="group bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all overflow-hidden"
                 >
                   {/* Thumbnail */}
-                  <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                  <div className="aspect-video bg-gray-100 flex items-center justify-center relative">
                     {drawing.thumbnail ? (
                       <img
                         src={drawing.thumbnail}
@@ -202,6 +336,16 @@ const Dashboard: React.FC = () => {
                       />
                     ) : (
                       <FileText className="w-12 h-12 text-gray-400" />
+                    )}
+
+                    {/* Collection Badge */}
+                    {drawing.collection && (
+                      <div
+                        className="absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium text-white"
+                        style={{ backgroundColor: drawing.collection.color || '#3B82F6' }}
+                      >
+                        {drawing.collection.name}
+                      </div>
                     )}
                   </div>
 
@@ -219,32 +363,16 @@ const Dashboard: React.FC = () => {
                       <span>
                         {new Date(drawing.updatedAt).toLocaleDateString()}
                       </span>
-                      <button
-                        onClick={(e) => handleDeleteDrawing(drawing.id, e)}
-                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete drawing"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Tags */}
-                    {drawing.tags && drawing.tags.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {drawing.tags.map((tagItem: any) => (
-                          <span
-                            key={tagItem.tag.id}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                            style={{
-                              backgroundColor: `${tagItem.tag.color}20`,
-                              color: tagItem.tag.color,
-                            }}
-                          >
-                            {tagItem.tag.name}
-                          </span>
-                        ))}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => handleDeleteDrawing(drawing.id, e)}
+                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete drawing"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -252,6 +380,19 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Collection Dialog */}
+      <CollectionDialog
+        isOpen={isCollectionDialogOpen}
+        onClose={() => {
+          setIsCollectionDialogOpen(false);
+          setEditingCollection(null);
+        }}
+        onSubmit={editingCollection ? handleUpdateCollection : handleCreateCollection}
+        initialData={editingCollection}
+        title={editingCollection ? 'Edit Collection' : 'Create Collection'}
+        submitLabel={editingCollection ? 'Update' : 'Create'}
+      />
     </div>
   );
 };
