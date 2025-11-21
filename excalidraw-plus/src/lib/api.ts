@@ -67,10 +67,10 @@ export const drawingAPI = {
 
   getDrawing: (id: string) => api.get(`/drawings/${id}`),
 
-  createDrawing: (data: { title: string; content?: any; isPublic?: boolean }) =>
+  createDrawing: (data: { title: string; content?: any; isPublic?: boolean; thumbnail?: string }) =>
     api.post('/drawings', data),
 
-  updateDrawing: (id: string, data: { title?: string; content?: any; isPublic?: boolean }) =>
+  updateDrawing: (id: string, data: { title?: string; content?: any; isPublic?: boolean; thumbnail?: string }) =>
     api.put(`/drawings/${id}`, data),
 
   deleteDrawing: (id: string) => api.delete(`/drawings/${id}`),
