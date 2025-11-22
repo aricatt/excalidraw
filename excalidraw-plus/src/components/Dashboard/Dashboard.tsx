@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical, FolderInput, Tag as TagIcon, Tags } from 'lucide-react';
+import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical, FolderInput, Tag as TagIcon, Tags, Upload } from 'lucide-react';
 import { drawingAPI, workspaceAPI, collectionAPI, tagAPI } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import CollectionDialog from '../CollectionDialog/CollectionDialog';
@@ -28,6 +28,10 @@ const Dashboard: React.FC = () => {
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<any>(null);
   const [tagMenuId, setTagMenuId] = useState<string | null>(null);
+
+  // File import ref
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
 
   // 初始化认证状态
   useEffect(() => {
@@ -179,6 +183,43 @@ const Dashboard: React.FC = () => {
       navigate(`/editor/${data.drawing.id}`);
     },
   });
+
+  // 导入绘图
+  const importMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!file.name.endsWith('.excalidraw')) {
+        throw new Error('Please select a .excalidraw file');
+      }
+
+      const text = await file.text();
+      const excalidrawData = JSON.parse(text);
+
+      const response = await drawingAPI.createDrawing({
+        title: file.name.replace('.excalidraw', ''),
+        content: excalidrawData,
+        collectionId: selectedCollectionId || undefined,
+      });
+
+      return response.data;
+    },
+    onSuccess: (data) => {
+      navigate(`/editor/${data.drawing.id}`);
+    },
+    onError: (error: any) => {
+      alert(error.message || 'Failed to import file. Please make sure it\'s a valid Excalidraw file.');
+    },
+  });
+
+  // 处理文件选择
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      importMutation.mutate(file);
+    }
+    // 重置 input 以允许重复选择同一文件
+    event.target.value = '';
+  };
+
 
   // 移动绘图到集合
   const moveToCollectionMutation = useMutation({
@@ -396,23 +437,55 @@ const Dashboard: React.FC = () => {
                   {searchQuery && ` matching "${searchQuery}"`}
                 </p>
               </div>
-              <button
-                onClick={handleCreateDrawing}
-                disabled={createMutation.isPending}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    New Drawing
-                  </>
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3">
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".excalidraw"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+
+                {/* New Drawing Button */}
+                <button
+                  onClick={handleCreateDrawing}
+                  disabled={createMutation.isPending}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {createMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Drawing
+                    </>
+                  )}
+                </button>
+
+                {/* Import Button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importMutation.isPending}
+                  className="inline-flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  {importMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Import
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Search Bar */}
