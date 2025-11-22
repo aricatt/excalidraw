@@ -247,10 +247,8 @@ const Dashboard: React.FC = () => {
     createMutation.mutate();
   };
 
-  const handleDeleteDrawing = (id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this drawing?')) {
+  const handleDeleteDrawing = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this drawing?')) {
       deleteMutation.mutate(id);
     }
   };
@@ -456,7 +454,7 @@ const Dashboard: React.FC = () => {
               {drawings.map((drawing: any) => (
                 <div
                   key={drawing.id}
-                  className="relative"
+                  className="relative bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all"
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData('drawingId', drawing.id);
@@ -465,7 +463,7 @@ const Dashboard: React.FC = () => {
                 >
                   <Link
                     to={`/editor/${drawing.id}`}
-                    className="group bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all block cursor-move"
+                    className="group block cursor-move"
                   >
                     {/* Thumbnail */}
                     <div className="aspect-video bg-gray-100 flex items-center justify-center relative overflow-hidden rounded-t-lg">
@@ -500,78 +498,81 @@ const Dashboard: React.FC = () => {
                           {drawing.description}
                         </p>
                       )}
-                      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                      <div className="mt-3 text-xs text-gray-500">
                         <span>
                           {new Date(drawing.updatedAt).toLocaleDateString()}
                         </span>
-                        <div className="flex items-center gap-1" onClick={(e) => e.preventDefault()}>
-                          {/* Tag Button */}
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setTagMenuId(tagMenuId === drawing.id ? null : drawing.id);
-                              }}
-                              className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                              title="Manage tags"
-                            >
-                              <TagIcon className="w-4 h-4" />
-                            </button>
-
-                            {tagMenuId === drawing.id && (
-                              <TagSelector
-                                tags={tags}
-                                selectedTagIds={drawing.tags?.map((t: any) => t.tag.id) || []}
-                                onToggleTag={(tagId) => {
-                                  const isAssigned = drawing.tags?.some((t: any) => t.tag.id === tagId);
-                                  toggleTagMutation.mutate({
-                                    drawingId: drawing.id,
-                                    tagId,
-                                    isAssigned: !!isAssigned
-                                  });
-                                }}
-                                onClose={() => setTagMenuId(null)}
-                              />
-                            )}
-                          </div>
-
-                          {/* Move to Collection Button */}
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setMoveMenuId(moveMenuId === drawing.id ? null : drawing.id);
-                              }}
-                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                              title="Move to collection"
-                            >
-                              <FolderInput className="w-4 h-4" />
-                            </button>
-
-                            {moveMenuId === drawing.id && (
-                              <CollectionSelector
-                                collections={collections}
-                                currentCollectionId={drawing.collectionId}
-                                onSelect={(collectionId) => handleMoveToCollection(drawing.id, collectionId)}
-                                onClose={() => setMoveMenuId(null)}
-                              />
-                            )}
-                          </div>
-
-                          {/* Delete Button */}
-                          <button
-                            onClick={(e) => handleDeleteDrawing(drawing.id, e)}
-                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Delete drawing"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
                       </div>
                     </div>
                   </Link>
+
+                  {/* Action Buttons - Outside Link */}
+                  <div className="absolute bottom-4 right-4 flex items-center gap-1">
+                    {/* Tag Button */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTagMenuId(tagMenuId === drawing.id ? null : drawing.id);
+                        }}
+                        className="p-1 bg-white text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors shadow-sm border border-gray-200"
+                        title="Manage tags"
+                      >
+                        <TagIcon className="w-4 h-4" />
+                      </button>
+
+                      {tagMenuId === drawing.id && (
+                        <TagSelector
+                          tags={tags}
+                          selectedTagIds={drawing.tags?.map((t: any) => t.tag.id) || []}
+                          onToggleTag={(tagId) => {
+                            const isAssigned = drawing.tags?.some((t: any) => t.tag.id === tagId);
+                            toggleTagMutation.mutate({
+                              drawingId: drawing.id,
+                              tagId,
+                              isAssigned: !!isAssigned
+                            });
+                          }}
+                          onClose={() => setTagMenuId(null)}
+                        />
+                      )}
+                    </div>
+
+                    {/* Move to Collection Button */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMoveMenuId(moveMenuId === drawing.id ? null : drawing.id);
+                        }}
+                        className="p-1 bg-white text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors shadow-sm border border-gray-200"
+                        title="Move to collection"
+                      >
+                        <FolderInput className="w-4 h-4" />
+                      </button>
+
+                      {moveMenuId === drawing.id && (
+                        <CollectionSelector
+                          collections={collections}
+                          currentCollectionId={drawing.collectionId}
+                          onSelect={(collectionId) => handleMoveToCollection(drawing.id, collectionId)}
+                          onClose={() => setMoveMenuId(null)}
+                        />
+                      )}
+                    </div>
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteDrawing(drawing.id);
+                      }}
+                      className="p-1 bg-white text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors shadow-sm border border-gray-200"
+                      title="Delete drawing"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
