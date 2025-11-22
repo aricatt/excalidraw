@@ -29,6 +29,18 @@ const TagSelector: React.FC<TagSelectorProps> = ({
             }
         };
 
+        // Smart positioning: check if dropdown would overflow viewport
+        if (ref.current) {
+            const rect = ref.current.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+
+            // If dropdown overflows right edge, align it to the right
+            if (rect.right > viewportWidth) {
+                ref.current.style.left = 'auto';
+                ref.current.style.right = '0';
+            }
+        }
+
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [onClose]);
@@ -36,7 +48,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
     return (
         <div
             ref={ref}
-            className="absolute right-0 top-full mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 py-2 z-20 max-h-80 overflow-y-auto"
+            className="absolute left-0 top-full mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 py-2 z-20 max-h-80 overflow-y-auto"
         >
             {/* Header */}
             <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between">
