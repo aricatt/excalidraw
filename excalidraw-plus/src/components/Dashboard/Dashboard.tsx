@@ -208,6 +208,36 @@ const Dashboard: React.FC = () => {
     },
   });
 
+  // 创建标签
+  const createTagMutation = useMutation({
+    mutationFn: (data: { name: string; color: string }) => tagAPI.createTag(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      setIsTagDialogOpen(false);
+      setEditingTag(null);
+    },
+  });
+
+  // 更新标签
+  const updateTagMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; color?: string } }) =>
+      tagAPI.updateTag(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      setIsTagDialogOpen(false);
+      setEditingTag(null);
+    },
+  });
+
+  // 删除标签
+  const deleteTagMutation = useMutation({
+    mutationFn: (id: string) => tagAPI.deleteTag(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.invalidateQueries({ queryKey: ['drawings'] });
+    },
+  });
+
   const handleLogout = () => {
     logout();
     navigate('/auth');
@@ -331,8 +361,9 @@ const Dashboard: React.FC = () => {
                 setIsTagDialogOpen(true);
               }}
               onDeleteTag={(id) => {
-                // TODO: Add delete tag mutation
-                console.log('Delete tag:', id);
+                if (confirm('Are you sure you want to delete this tag?')) {
+                  deleteTagMutation.mutate(id);
+                }
               }}
             />
           </div>
@@ -434,10 +465,10 @@ const Dashboard: React.FC = () => {
                 >
                   <Link
                     to={`/editor/${drawing.id}`}
-                    className="group bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all overflow-hidden block cursor-move"
+                    className="group bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all block cursor-move"
                   >
                     {/* Thumbnail */}
-                    <div className="aspect-video bg-gray-100 flex items-center justify-center relative">
+                    <div className="aspect-video bg-gray-100 flex items-center justify-center relative overflow-hidden rounded-t-lg">
                       {drawing.thumbnail ? (
                         <img
                           src={drawing.thumbnail}
@@ -569,9 +600,13 @@ const Dashboard: React.FC = () => {
           setEditingTag(null);
         }}
         onSave={(data) => {
-          // TODO: Add create/update tag mutation
-          console.log('Save tag:', data);
-          setIsTagDialogOpen(false);
+          if (editingTag) {
+            // Update existing tag
+            updateTagMutation.mutate({ id: editingTag.id, data });
+          } else {
+            // Create new tag
+            createTagMutation.mutate(data);
+          }
         }}
         tag={editingTag}
       />
