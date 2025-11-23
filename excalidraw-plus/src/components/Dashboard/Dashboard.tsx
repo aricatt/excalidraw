@@ -11,6 +11,7 @@ import SearchBar from '../SearchBar/SearchBar';
 import TagDialog from '../TagDialog/TagDialog';
 import TagList from '../TagList/TagList';
 import TagSelector from '../TagSelector/TagSelector';
+import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +32,11 @@ const Dashboard: React.FC = () => {
 
   // File import ref
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Delete confirmation dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [drawingToDelete, setDrawingToDelete] = useState<string | null>(null);
+
 
 
   // 初始化认证状态
@@ -289,9 +295,21 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDeleteDrawing = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this drawing?')) {
-      deleteMutation.mutate(id);
+    setDrawingToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (drawingToDelete) {
+      deleteMutation.mutate(drawingToDelete);
     }
+    setShowDeleteDialog(false);
+    setDrawingToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+    setDrawingToDelete(null);
   };
 
   const handleCreateCollection = (data: { name: string; description?: string; color?: string }) => {
@@ -599,7 +617,10 @@ const Dashboard: React.FC = () => {
                           tags={tags}
                           selectedTagIds={drawing.tags?.map((t: any) => t.tag.id) || []}
                           onToggleTag={(tagId) => {
+                            console.log('Tag toggle clicked:', tagId);
                             const isAssigned = drawing.tags?.some((t: any) => t.tag.id === tagId);
+                            console.log('Is assigned:', isAssigned);
+                            console.log('Drawing tags:', drawing.tags);
                             toggleTagMutation.mutate({
                               drawingId: drawing.id,
                               tagId,
@@ -683,6 +704,18 @@ const Dashboard: React.FC = () => {
           }
         }}
         tag={editingTag}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Delete Drawing"
+        message="Are you sure you want to delete this drawing? This action cannot be undone."
+        type="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
       />
     </div>
   );

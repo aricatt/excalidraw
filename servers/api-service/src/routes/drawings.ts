@@ -434,6 +434,102 @@ const drawingRoutes: FastifyPluginAsync = async (fastify) => {
       });
     }
   });
+
+  // 为绘图分配标签
+  fastify.post('/:id/tags', {
+    preHandler: requireAuth,
+  }, async (request: any, reply) => {
+    try {
+      const { id } = request.params;
+      const { tagId } = request.body;
+      const userId = request.user.userId;
+
+      // 验证绘图所有权
+      const drawing = await fastify.prisma.drawing.findFirst({
+        where: { id, userId },
+      });
+
+      if (!drawing) {
+        return reply.code(404).send({ error: 'Drawing not found' });
+      }
+
+      // 验证标签存在
+      const tag = await fastify.prisma.tag.findUnique({
+        where: { id: tagId },
+      });
+
+      if (!tag) {
+        return reply.code(404).send({ error: 'Tag not found' });
+      }
+
+      // 检查是否已经分配
+      const existing = await fastify.prisma.drawingTag.findUnique({
+        where: {
+          drawingId_tagId: {
+            drawingId: id,
+            tagId: tagId,
+          },
+        },
+      });
+
+      if (existing) {
+        return reply.code(400).send({ error: 'Tag already assigned to this drawing' });
+      }
+
+      // 分配标签
+      await fastify.prisma.drawingTag.create({
+        data: {
+          drawingId: id,
+          tagId: tagId,
+        },
+      });
+
+      return reply.send({
+        message: 'Tag assigned successfully',
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({
+        error: 'Internal server error',
+      });
+    }
+  });
+
+  // 从绘图移除标签
+  fastify.delete('/:id/tags/:tagId', {
+    preHandler: requireAuth,
+  }, async (request: any, reply) => {
+    try {
+      const { id, tagId } = request.params;
+      const userId = request.user.userId;
+
+      // 验证绘图所有权
+      const drawing = await fastify.prisma.drawing.findFirst({
+        where: { id, userId },
+      });
+
+      if (!drawing) {
+        return reply.code(404).send({ error: 'Drawing not found' });
+      }
+
+      // 删除标签关联
+      await fastify.prisma.drawingTag.deleteMany({
+        where: {
+          drawingId: id,
+          tagId: tagId,
+        },
+      });
+
+      return reply.send({
+        message: 'Tag removed successfully',
+      });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({
+        error: 'Internal server error',
+      });
+    }
+  });
 };
 
 export default drawingRoutes;
