@@ -8,6 +8,10 @@ import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import FramesPanel from '../FramesPanel/FramesPanel';
 import PresentationMode from '../PresentationMode/PresentationMode';
 
+// 配置 Excalidraw 资源路径,修复字体加载
+if (typeof window !== 'undefined') {
+  (window as any).EXCALIDRAW_ASSET_PATH = '/';
+}
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();

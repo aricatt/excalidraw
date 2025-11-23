@@ -73,21 +73,27 @@ export const useFrameThumbnails = ({
                 el.frameId === frame.id && !el.isDeleted
             );
 
-            // 导出为 canvas
-            const canvas = await exportToCanvas({
-                elements: [frame, ...frameElements],
-                files,
-                maxWidthOrHeight: 300,
-                exportPadding: 10,
-            });
+            // 导出为 canvas (字体加载错误不会阻止生成)
+            try {
+                const canvas = await exportToCanvas({
+                    elements: [frame, ...frameElements],
+                    files,
+                    maxWidthOrHeight: 300,
+                    exportPadding: 10,
+                });
 
-            const dataURL = canvas.toDataURL('image/png');
+                const dataURL = canvas.toDataURL('image/png');
 
-            // 更新缓存和状态
-            cacheRef.current.set(frame.id, dataURL);
-            setThumbnails(prev => new Map(prev).set(frame.id, dataURL));
+                // 更新缓存和状态
+                cacheRef.current.set(frame.id, dataURL);
+                setThumbnails(prev => new Map(prev).set(frame.id, dataURL));
 
-            console.log(`Thumbnail updated for frame: ${frame.id}`);
+                // console.log(`Thumbnail updated for frame: ${frame.id}`); // 减少日志输出
+            } catch (exportError: any) {
+                // 捕获但不阻止,缩略图可能已经生成
+                console.warn(`Thumbnail generation warning for frame ${frame.id}:`, exportError.message);
+            }
+
         } catch (error) {
             console.error('Failed to generate thumbnail for frame:', frame.id, error);
         } finally {

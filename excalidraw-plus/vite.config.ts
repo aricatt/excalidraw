@@ -3,7 +3,28 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // 自定义插件:处理 Excalidraw 字体文件
+    {
+      name: 'excalidraw-fonts',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          // 拦截字体文件请求
+          if (req.url?.includes('/fonts/') && req.url?.match(/\.(woff2?|ttf)$/)) {
+            // 移除查询参数
+            const cleanUrl = req.url.split('?')[0];
+            // 重写为正确的本地路径
+            req.url = cleanUrl.replace(
+              /.*\/fonts\//,
+              '/@fs' + path.resolve(__dirname, '../packages/excalidraw/fonts') + '/'
+            );
+          }
+          next();
+        });
+      },
+    },
+  ],
   server: {
     port: 4417,
     host: "0.0.0.0",
@@ -74,5 +95,20 @@ export default defineConfig({
       "@excalidraw/math",
       "@excalidraw/utils",
     ],
+  },
+  // 包含字体文件作为资源
+  assetsInclude: ['**/*.woff2', '**/*.woff', '**/*.ttf'],
+  build: {
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          // 保持字体文件的原始目录结构
+          if (assetInfo.name?.match(/\.(woff2?|ttf|eot)$/)) {
+            return 'fonts/[name][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
+      },
+    },
   },
 });
