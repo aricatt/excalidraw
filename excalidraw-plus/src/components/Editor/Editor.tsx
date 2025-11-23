@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
 import { ArrowLeft, Save, Loader2, Check, Edit2 } from 'lucide-react';
 import { drawingAPI } from '../../lib/api';
+import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,6 +18,8 @@ const Editor: React.FC = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [title, setTitle] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+
 
   // 获取绘图数据
   const { data: drawingData, isLoading, error } = useQuery({
@@ -224,14 +227,30 @@ const Editor: React.FC = () => {
   // 返回 Dashboard
   const handleBack = () => {
     if (hasUnsavedChanges) {
-      if (confirm('You have unsaved changes. Do you want to save before leaving?')) {
-        handleSave();
-        setTimeout(() => navigate('/'), 500);
-        return;
-      }
+      setShowExitDialog(true);
+    } else {
+      navigate('/');
     }
+  };
+
+  // 保存并离开
+  const handleSaveAndExit = () => {
+    setShowExitDialog(false);
+    handleSave();
+    setTimeout(() => navigate('/'), 500);
+  };
+
+  // 不保存直接离开
+  const handleDiscardAndExit = () => {
+    setShowExitDialog(false);
     navigate('/');
   };
+
+  // 取消,留在编辑器
+  const handleCancelExit = () => {
+    setShowExitDialog(false);
+  };
+
 
   // 键盘快捷键
   useEffect(() => {
@@ -348,6 +367,21 @@ const Editor: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Exit Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showExitDialog}
+        title="Unsaved Changes"
+        message="You have unsaved changes. What would you like to do?"
+        type="warning"
+        confirmText="Save & Leave"
+        cancelText="Stay"
+        showThirdButton={true}
+        thirdButtonText="Discard & Leave"
+        onConfirm={handleSaveAndExit}
+        onCancel={handleCancelExit}
+        onThirdAction={handleDiscardAndExit}
+      />
 
       {/* Excalidraw Editor */}
       <div className="flex-1 overflow-hidden">
