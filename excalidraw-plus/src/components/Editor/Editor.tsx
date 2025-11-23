@@ -5,6 +5,9 @@ import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
 import { ArrowLeft, Save, Loader2, Check, Edit2 } from 'lucide-react';
 import { drawingAPI } from '../../lib/api';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
+import FramesPanel from '../FramesPanel/FramesPanel';
+import PresentationMode from '../PresentationMode/PresentationMode';
+
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +22,13 @@ const Editor: React.FC = () => {
   const [title, setTitle] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+
+  // Presentation mode states
+  const [isPresentationMode, setIsPresentationMode] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [frameOrder, setFrameOrder] = useState<string[]>([]);
+  const [frames, setFrames] = useState<any[]>([]);
+
 
 
   // 获取绘图数据
@@ -222,7 +232,26 @@ const Editor: React.FC = () => {
   // 监听变化
   const handleChange = useCallback(() => {
     setHasUnsavedChanges(true);
-  }, []);
+
+    // 更新 frames 列表 - 只在真正改变时更新
+    if (excalidrawAPI) {
+      const elements = excalidrawAPI.getSceneElements();
+      const frameElements = elements.filter((el: any) => el.type === 'frame' && !el.isDeleted);
+
+      // 比较 frame IDs,只在变化时更新
+      setFrames(prevFrames => {
+        const prevIds = prevFrames.map(f => f.id).sort().join(',');
+        const newIds = frameElements.map((f: any) => f.id).sort().join(',');
+
+        // 如果 ID 列表没变,不更新状态
+        if (prevIds === newIds) {
+          return prevFrames;
+        }
+
+        return frameElements;
+      });
+    }
+  }, [excalidrawAPI]);
 
   // 返回 Dashboard
   const handleBack = () => {
@@ -250,6 +279,188 @@ const Editor: React.FC = () => {
   const handleCancelExit = () => {
     setShowExitDialog(false);
   };
+
+  // 获取所有 Frames
+  const getFrames = useCallback(() => {
+    if (!excalidrawAPI) return [];
+    const elements = excalidrawAPI.getSceneElements();
+    return elements.filter((el: any) => el.type === 'frame');
+  }, [excalidrawAPI]);
+
+  // 创建新 Frame
+  const handleCreateFrame = useCallback(() => {
+    if (!excalidrawAPI) return;
+
+    const frameWidth = 1600;
+    const frameHeight = 900;
+    const spacing = 500; // 间距
+
+    // 获取当前所有 Frames
+    const currentElements = excalidrawAPI.getSceneElements();
+    const existingFrames = currentElements.filter((el: any) => el.type === 'frame');
+
+    let x: number, y: number;
+
+    if (existingFrames.length > 0) {
+      // 如果已有 Frame,在最后一个 Frame 右侧创建
+      const lastFrame = existingFrames[existingFrames.length - 1];
+      x = lastFrame.x + lastFrame.width + spacing;
+      y = lastFrame.y; // 保持相同的 y 坐标
+    } else {
+      // 如果没有 Frame,在视口中心创建第一个
+      const appState = excalidrawAPI.getAppState();
+      const { scrollX, scrollY, zoom } = appState;
+      const viewportWidth = window.innerWidth / zoom.value;
+      const viewportHeight = window.innerHeight / zoom.value;
+      const centerX = -scrollX + viewportWidth / 2;
+      const centerY = -scrollY + viewportHeight / 2;
+      x = centerX - frameWidth / 2;
+      y = centerY - frameHeight / 2;
+    }
+
+    // 生成唯一 ID
+    const id = `frame_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const newFrame = {
+      id,
+      type: 'frame',
+      x,
+      y,
+      width: frameWidth,
+      height: frameHeight,
+      angle: 0,
+      strokeColor: '#1e1e1e',
+      backgroundColor: 'transparent',
+      fillStyle: 'solid',
+      strokeWidth: 2,
+      strokeStyle: 'solid',
+      roughness: 0,
+      opacity: 100,
+      groupIds: [],
+      frameId: null,
+      // 不指定 index,让 Excalidraw 自动生成
+      roundness: null,
+      seed: Math.floor(Math.random() * 2 ** 31),
+      version: 1,
+      versionNonce: Math.floor(Math.random() * 2 ** 31),
+      isDeleted: false,
+      boundElements: null,
+      updated: Date.now(),
+      link: null,
+      locked: false,
+      name: `Frame ${existingFrames.length + 1}`,
+    };
+
+    console.log('Creating frame:', newFrame);
+
+    excalidrawAPI.updateScene({
+      elements: [...currentElements, newFrame as any],
+    });
+
+    // 自动滚动到新创建的 Frame
+    setTimeout(() => {
+      excalidrawAPI.scrollToContent(newFrame as any, {
+        fitToViewport: true,
+        animate: true,
+      });
+      console.log('Scrolled to new frame');
+    }, 100);
+
+    setHasUnsavedChanges(true);
+  }, [excalidrawAPI]);
+
+  // 重新排序 Frames
+  const handleReorderFrames = useCallback((newOrder: string[]) => {
+    setFrameOrder(newOrder);
+    setHasUnsavedChanges(true);
+  }, []);
+
+  // 跳转到指定 Frame
+  const handleFrameClick = useCallback((frameId: string) => {
+    if (!excalidrawAPI) return;
+
+    const frames = getFrames();
+    const frame = frames.find((f: any) => f.id === frameId);
+    if (!frame) return;
+
+    excalidrawAPI.scrollToContent(frame, {
+      fitToViewport: true,
+      animate: true,
+    });
+  }, [excalidrawAPI, getFrames]);
+
+  // 开始演示
+  const handleStartPresentation = useCallback(() => {
+    const frames = getFrames();
+    if (frames.length === 0) {
+      alert('Please add at least one frame to start presentation');
+      return;
+    }
+
+    setCurrentSlide(0);
+    setIsPresentationMode(true);
+
+    // 进入全屏
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error('Failed to enter fullscreen:', err);
+      });
+    }
+
+    // 跳转到第一个 Frame
+    const orderedFrames = frameOrder.length > 0
+      ? frameOrder.map(id => frames.find((f: any) => f.id === id)).filter(Boolean)
+      : frames;
+
+    if (orderedFrames[0]) {
+      handleFrameClick(orderedFrames[0].id);
+    }
+  }, [getFrames, frameOrder, handleFrameClick]);
+
+  // 演示模式导航
+  const handlePrevSlide = useCallback(() => {
+    if (currentSlide > 0) {
+      const newSlide = currentSlide - 1;
+      setCurrentSlide(newSlide);
+
+      const frames = getFrames();
+      const orderedFrames = frameOrder.length > 0
+        ? frameOrder.map(id => frames.find((f: any) => f.id === id)).filter(Boolean)
+        : frames;
+
+      if (orderedFrames[newSlide]) {
+        handleFrameClick(orderedFrames[newSlide].id);
+      }
+    }
+  }, [currentSlide, getFrames, frameOrder, handleFrameClick]);
+
+  const handleNextSlide = useCallback(() => {
+    const frames = getFrames();
+    const orderedFrames = frameOrder.length > 0
+      ? frameOrder.map(id => frames.find((f: any) => f.id === id)).filter(Boolean)
+      : frames;
+
+    if (currentSlide < orderedFrames.length - 1) {
+      const newSlide = currentSlide + 1;
+      setCurrentSlide(newSlide);
+
+      if (orderedFrames[newSlide]) {
+        handleFrameClick(orderedFrames[newSlide].id);
+      }
+    }
+  }, [currentSlide, getFrames, frameOrder, handleFrameClick]);
+
+  const handleExitPresentation = useCallback(() => {
+    setIsPresentationMode(false);
+
+    // 退出全屏
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(err => {
+        console.error('Failed to exit fullscreen:', err);
+      });
+    }
+  }, []);
+
 
 
   // 键盘快捷键
@@ -383,22 +594,48 @@ const Editor: React.FC = () => {
         onThirdAction={handleDiscardAndExit}
       />
 
-      {/* Excalidraw Editor */}
-      <div className="flex-1 overflow-hidden">
-        <Excalidraw
-          excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
-          initialData={initialData}
-          onChange={handleChange}
-          theme="light"
-          name="Excalidraw Plus"
-          UIOptions={{
-            canvasActions: {
-              loadScene: false,
-              saveToActiveFile: false,
-            },
-          }}
-        />
+      {/* Main Content Area - Excalidraw + Frames Panel */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Excalidraw Editor */}
+        <div className="flex-1 overflow-hidden">
+          <Excalidraw
+            excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
+            initialData={initialData}
+            onChange={handleChange}
+            theme="light"
+            name="Excalidraw Plus"
+            UIOptions={{
+              canvasActions: {
+                loadScene: false,
+                saveToActiveFile: false,
+              },
+            }}
+          />
+        </div>
+
+        {/* Frames Panel - 只在非演示模式显示 */}
+        {!isPresentationMode && (
+          <FramesPanel
+            frames={frames}
+            frameOrder={frameOrder}
+            onCreateFrame={handleCreateFrame}
+            onReorderFrames={handleReorderFrames}
+            onStartPresentation={handleStartPresentation}
+            onFrameClick={handleFrameClick}
+          />
+        )}
       </div>
+
+      {/* Presentation Mode Controls */}
+      {isPresentationMode && (
+        <PresentationMode
+          totalSlides={frames.length}
+          currentSlide={currentSlide}
+          onPrevSlide={handlePrevSlide}
+          onNextSlide={handleNextSlide}
+          onExit={handleExitPresentation}
+        />
+      )}
     </div>
   );
 };
