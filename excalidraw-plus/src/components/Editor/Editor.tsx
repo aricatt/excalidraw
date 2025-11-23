@@ -393,8 +393,15 @@ const Editor: React.FC = () => {
 
     console.log('Creating frame:', newFrame);
 
+    // 使用 updateScene 添加新元素,让 Excalidraw 处理 index
+    const appState = excalidrawAPI.getAppState();
     excalidrawAPI.updateScene({
       elements: [...currentElements, newFrame as any],
+      appState: {
+        ...appState,
+        // 选中新创建的 Frame
+        selectedElementIds: { [id]: true },
+      },
     });
 
     // 自动滚动到新创建的 Frame
@@ -408,6 +415,7 @@ const Editor: React.FC = () => {
 
     setHasUnsavedChanges(true);
   }, [excalidrawAPI]);
+
 
   // 重新排序 Frames
   const handleReorderFrames = useCallback((newOrder: string[]) => {
