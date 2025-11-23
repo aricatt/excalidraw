@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Play, Plus, GripVertical } from 'lucide-react';
+import React from 'react';
+import { Play, Plus, GripVertical, Loader2 } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useFrameThumbnails } from '../../hooks/useFrameThumbnails';
 
 interface Frame {
     id: string;
@@ -17,6 +18,7 @@ interface Frame {
 interface FramesPanelProps {
     frames: Frame[];
     frameOrder: string[];
+    excalidrawAPI: any;
     onCreateFrame: () => void;
     onReorderFrames: (newOrder: string[]) => void;
     onStartPresentation: () => void;
@@ -26,10 +28,18 @@ interface FramesPanelProps {
 interface SortableFrameItemProps {
     frame: Frame;
     index: number;
+    thumbnail?: string;
+    isLoading: boolean;
     onClick: () => void;
 }
 
-const SortableFrameItem: React.FC<SortableFrameItemProps> = ({ frame, index, onClick }) => {
+const SortableFrameItem: React.FC<SortableFrameItemProps> = ({
+    frame,
+    index,
+    thumbnail,
+    isLoading,
+    onClick
+}) => {
     const {
         attributes,
         listeners,
@@ -62,15 +72,25 @@ const SortableFrameItem: React.FC<SortableFrameItemProps> = ({ frame, index, onC
             </div>
 
             {/* Frame Number */}
-            <div className="absolute top-2 right-2 px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded">
+            <div className="absolute top-2 right-2 px-2 py-0.5 bg-blue-600 text-white text-xs font-medium rounded z-10">
                 {index + 1}
             </div>
 
-            {/* Thumbnail Placeholder */}
+            {/* Thumbnail */}
             <div className="aspect-video bg-gray-100 flex items-center justify-center">
-                <div className="text-gray-400 text-sm">
-                    {frame.name || `Frame ${index + 1}`}
-                </div>
+                {isLoading ? (
+                    <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                ) : thumbnail ? (
+                    <img
+                        src={thumbnail}
+                        alt={frame.name || `Frame ${index + 1}`}
+                        className="w-full h-full object-contain"
+                    />
+                ) : (
+                    <div className="text-gray-400 text-sm">
+                        {frame.name || `Frame ${index + 1}`}
+                    </div>
+                )}
             </div>
 
             {/* Frame Info */}
@@ -84,6 +104,7 @@ const SortableFrameItem: React.FC<SortableFrameItemProps> = ({ frame, index, onC
 const FramesPanel: React.FC<FramesPanelProps> = ({
     frames,
     frameOrder,
+    excalidrawAPI,
     onCreateFrame,
     onReorderFrames,
     onStartPresentation,
@@ -95,6 +116,13 @@ const FramesPanel: React.FC<FramesPanelProps> = ({
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+
+    // 使用缩略图 hook
+    const { getThumbnail, isLoading } = useFrameThumbnails({
+        frames,
+        excalidrawAPI,
+        enabled: true,
+    });
 
     // 按照 frameOrder 排序 frames
     const orderedFrames = frameOrder
@@ -165,6 +193,8 @@ const FramesPanel: React.FC<FramesPanelProps> = ({
                                         key={frame.id}
                                         frame={frame}
                                         index={index}
+                                        thumbnail={getThumbnail(frame.id)}
+                                        isLoading={isLoading(frame.id)}
                                         onClick={() => onFrameClick(frame.id)}
                                     />
                                 ))}

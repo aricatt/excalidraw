@@ -59,6 +59,42 @@ const Editor: React.FC = () => {
     }
   }, [drawingData]);
 
+  // 清理无效的 Frame index (修复旧数据)
+  useEffect(() => {
+    if (!excalidrawAPI) return;
+
+    const cleanupInvalidIndices = () => {
+      const elements = excalidrawAPI.getSceneElements();
+      let needsUpdate = false;
+
+      const cleanedElements = elements.map((el: any) => {
+        // 检查是否是 Frame 且有无效的 index
+        if (el.type === 'frame' && el.index && typeof el.index === 'string') {
+          // 检查 index 是否是简单的无效格式 (如 "a0", "b0" 等)
+          if (/^[a-z]0$/.test(el.index)) {
+            needsUpdate = true;
+            // 移除无效的 index,让 Excalidraw 重新生成
+            const { index, ...rest } = el;
+            return rest;
+          }
+        }
+        return el;
+      });
+
+      if (needsUpdate) {
+        console.log('Cleaning up invalid frame indices...');
+        excalidrawAPI.updateScene({
+          elements: cleanedElements,
+        });
+      }
+    };
+
+    // 延迟执行,确保 API 已完全初始化
+    const timer = setTimeout(cleanupInvalidIndices, 500);
+    return () => clearTimeout(timer);
+  }, [excalidrawAPI]);
+
+
   // 生成缩略图
   const generateThumbnail = useCallback(async (): Promise<string | null> => {
     if (!excalidrawAPI) return null;
@@ -618,6 +654,7 @@ const Editor: React.FC = () => {
           <FramesPanel
             frames={frames}
             frameOrder={frameOrder}
+            excalidrawAPI={excalidrawAPI}
             onCreateFrame={handleCreateFrame}
             onReorderFrames={handleReorderFrames}
             onStartPresentation={handleStartPresentation}
