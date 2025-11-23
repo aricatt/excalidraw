@@ -577,6 +577,27 @@ const Dashboard: React.FC = () => {
                           {drawing.collection.name}
                         </div>
                       )}
+
+                      {/* Tag Badges */}
+                      {drawing.tags && drawing.tags.length > 0 && (
+                        <div className="absolute top-2 right-2 flex flex-wrap gap-1 max-w-[50%] justify-end">
+                          {drawing.tags.slice(0, 3).map((tagRelation: any) => (
+                            <span
+                              key={tagRelation.tag.id}
+                              className="px-2 py-0.5 rounded-full text-xs font-medium text-white truncate"
+                              style={{ backgroundColor: tagRelation.tag.color || '#6366f1' }}
+                              title={tagRelation.tag.name}
+                            >
+                              {tagRelation.tag.name}
+                            </span>
+                          ))}
+                          {drawing.tags.length > 3 && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500 text-white">
+                              +{drawing.tags.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Content */}
@@ -617,10 +638,7 @@ const Dashboard: React.FC = () => {
                           tags={tags}
                           selectedTagIds={drawing.tags?.map((t: any) => t.tag.id) || []}
                           onToggleTag={(tagId) => {
-                            console.log('Tag toggle clicked:', tagId);
                             const isAssigned = drawing.tags?.some((t: any) => t.tag.id === tagId);
-                            console.log('Is assigned:', isAssigned);
-                            console.log('Drawing tags:', drawing.tags);
                             toggleTagMutation.mutate({
                               drawingId: drawing.id,
                               tagId,
