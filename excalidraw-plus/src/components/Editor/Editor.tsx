@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Excalidraw, exportToBlob, DefaultSidebar, Sidebar, Footer, useHandleLibrary } from '@excalidraw/excalidraw';
+import { Excalidraw, DefaultSidebar, Sidebar, Footer, MainMenu, WelcomeScreen, useHandleLibrary } from "@excalidraw/excalidraw";
+import { exportToBlob } from '@excalidraw/excalidraw';
 
 
 import { ArrowLeft, Save, Loader2, Check, Edit2 } from 'lucide-react';
@@ -20,48 +21,29 @@ if (typeof window !== 'undefined') {
   (window as any).EXCALIDRAW_ASSET_PATH = '/';
 }
 
-const Editor: React.FC = () => {
+export const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const [excalidrawAPI, setExcalidrawAPI] = useState<any | null>(null);
+  const [excalidrawAPI, setExcalidrawAPI] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState('Untitled Drawing');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
-
-  // Presentation mode states
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isPresentationMode, setIsPresentationMode] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [frameOrder, setFrameOrder] = useState<string[]>([]);
   const [frames, setFrames] = useState<any[]>([]);
 
-  // 替代 useHandleLibrary: 手动加载 Library 以避免冲突和不必要的弹窗
-  useEffect(() => {
-    if (!excalidrawAPI) return;
-
-    const loadLibrary = async () => {
-      try {
-        const libraryData = await localStorageLibraryAdapter.load();
-        if (libraryData && libraryData.libraryItems) {
-          excalidrawAPI.updateLibrary({
-            libraryItems: libraryData.libraryItems,
-            merge: true,
-            prompt: false // 确保初始加载不弹窗
-          });
-          console.log('Library loaded from localStorage');
-        }
-      } catch (error) {
-        console.error('Failed to load library:', error);
-      }
-    };
-
-    loadLibrary();
-  }, [excalidrawAPI]);
+  // Handle library imports from URL (e.g., from excalidraw.com/libraries)
+  // 使用官方的 useHandleLibrary hook，它会自动处理所有素材库逻辑
+  useHandleLibrary({
+    excalidrawAPI,
+    adapter: localStorageLibraryAdapter,
+  });
 
 
 
@@ -647,88 +629,6 @@ const Editor: React.FC = () => {
   }, [drawingData, id]);
 
 
-  // 使用 ref 保存最新的 api 实例,以便在事件监听中使用
-  const excalidrawAPIRef = useRef<any>(null);
-  useEffect(() => {
-    excalidrawAPIRef.current = excalidrawAPI;
-  }, [excalidrawAPI]);
-
-  // 处理跨窗口素材库导入
-  useEffect(() => {
-    const bc = new BroadcastChannel('excalidraw_library_channel');
-
-    // 1. 作为子窗口(从素材库跳回): 发送 hash 给父窗口并关闭
-    const hash = window.location.hash;
-    if (hash.includes('addLibrary')) {
-      console.log('Detected library import in popup, sending to parent via BroadcastChannel...');
-      bc.postMessage({
-        type: 'EXCALIDRAW_LIBRARY_UPDATE',
-        hash: hash
-      });
-
-      // 尝试关闭窗口
-      // 注意: 只有通过 window.open 打开的窗口才能被脚本关闭
-      // 如果是用户点击链接打开的新标签页,这可能无效
-      try {
-        window.close();
-      } catch (e) {
-        console.warn('Failed to close window:', e);
-      }
-      return;
-    }
-
-    // 2. 作为父窗口: 监听来自子窗口的消息
-    bc.onmessage = async (event) => {
-      if (event.data?.type === 'EXCALIDRAW_LIBRARY_UPDATE') {
-        console.log('Received library update from popup');
-
-        // 手动处理导入,以跳过确认弹窗
-        const hash = event.data.hash;
-        const params = new URLSearchParams(hash.slice(1));
-        const libraryUrl = params.get('addLibrary');
-
-        if (libraryUrl && excalidrawAPIRef.current) {
-          try {
-            const decodedUrl = decodeURIComponent(libraryUrl);
-            const request = await fetch(decodedUrl);
-            const blob = await request.blob();
-
-            await excalidrawAPIRef.current.updateLibrary({
-              libraryItems: blob,
-              prompt: false, // 关键: 禁用确认弹窗
-              merge: true,
-              openLibraryMenu: true,
-              defaultStatus: "published"
-            });
-            console.log('Library imported successfully without prompt');
-          } catch (error) {
-            console.error('Failed to import library:', error);
-          }
-        }
-      }
-    };
-
-    return () => bc.close();
-  }, [excalidrawAPI]); // Add excalidrawAPI to dependencies to ensure excalidrawAPIRef.current is up-to-date
-
-  // 检查是否是素材库回调窗口 (放在 useEffect 之后,但在渲染编辑器之前)
-  if (window.location.hash.includes('addLibrary')) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Importing library...</p>
-          <button
-            onClick={() => window.close()}
-            className="mt-4 text-sm text-blue-500 hover:underline"
-          >
-            Close this tab
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
 
     return (
@@ -842,7 +742,7 @@ const Editor: React.FC = () => {
             onChange={handleChange}
             theme="light"
             name="Excalidraw Plus"
-            libraryReturnUrl={window.location.href}
+            libraryReturnUrl={window.location.origin + window.location.pathname}
             UIOptions={{
               canvasActions: {
                 loadScene: false,
