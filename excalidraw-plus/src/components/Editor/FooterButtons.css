@@ -1,0 +1,69 @@
+/* Custom Footer Buttons - 与 Excalidraw undo/redo 按钮对齐 */
+
+.custom-footer-btn {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    margin: 0 0.25rem;
+    /* 按钮之间的间距 */
+    border: 1px solid #e3e3e3;
+    /* 浅灰色边框 */
+    border-radius: 4px;
+    background: #ffffff;
+    /* 白色背景 */
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: #6c757d;
+    /* 灰色图标 */
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    vertical-align: middle;
+    /* 确保垂直对齐 */
+}
+
+.custom-footer-btn:hover {
+    background: #f0f0f0;
+    border-color: #c0c0c0;
+    color: #495057;
+}
+
+.custom-footer-btn:active {
+    background: #e0e0e0;
+    border-color: #a0a0a0;
+}
+
+
+.custom-footer-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+}
+
+/* 按钮容器 - 确保与其他 Footer 元素对齐 */
+.custom-footer-buttons-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1rem;
+    /* 与 undo/redo 按钮的间距 */
+}
+
+/* Dark theme support */
+.theme--dark .custom-footer-btn {
+    color: #a0a0a0;
+    background: #2a2a2a;
+    border-color: #404040;
+}
+
+.theme--dark .custom-footer-btn:hover {
+    background: #3a3a3a;
+    border-color: #505050;
+    color: #d0d0d0;
+}
+
+.theme--dark .custom-footer-btn:active {
+    background: #4a4a4a;
+    border-color: #606060;
+}
