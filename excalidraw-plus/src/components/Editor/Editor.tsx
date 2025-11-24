@@ -38,6 +38,12 @@ export const Editor: React.FC = () => {
   const [frameOrder, setFrameOrder] = useState<string[]>([]);
   const [frames, setFrames] = useState<any[]>([]);
 
+
+  // 设置窗口名称，使素材库能够正确返回到当前窗口
+  useEffect(() => {
+    window.name = '_excalidraw';
+  }, []);
+
   // Handle library imports from URL (e.g., from excalidraw.com/libraries)
   // 使用官方的 useHandleLibrary hook，它会自动处理所有素材库逻辑
   useHandleLibrary({
@@ -600,6 +606,7 @@ export const Editor: React.FC = () => {
       elements: [],
       appState: {
         viewBackgroundColor: '#ffffff',
+        openSidebar: null, // 确保初始状态下 Sidebar 是关闭的
       },
     };
 
@@ -618,6 +625,7 @@ export const Editor: React.FC = () => {
             appState: {
               ...data.appState,
               ...snapshot.appState,
+              openSidebar: null, // 即使恢复快照,也确保 Sidebar 关闭
             },
           };
         }
