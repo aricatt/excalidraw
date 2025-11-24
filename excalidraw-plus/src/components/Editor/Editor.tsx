@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Excalidraw, exportToBlob, DefaultSidebar, Sidebar, Footer, useHandleLibrary } from '@excalidraw/excalidraw';
@@ -10,6 +11,8 @@ import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import FramesPanel from '../FramesPanel/FramesPanel';
 import PresentationMode from '../PresentationMode/PresentationMode';
 import './FooterButtons.css';
+import { localStorageLibraryAdapter } from '../../lib/libraryAdapter';
+
 
 
 // 配置 Excalidraw 资源路径,修复字体加载
@@ -37,8 +40,29 @@ const Editor: React.FC = () => {
   const [frameOrder, setFrameOrder] = useState<string[]>([]);
   const [frames, setFrames] = useState<any[]>([]);
 
-  // Handle library imports from URL (e.g., from excalidraw.com/libraries)
-  useHandleLibrary({ excalidrawAPI });
+  // 替代 useHandleLibrary: 手动加载 Library 以避免冲突和不必要的弹窗
+  useEffect(() => {
+    if (!excalidrawAPI) return;
+
+    const loadLibrary = async () => {
+      try {
+        const libraryData = await localStorageLibraryAdapter.load();
+        if (libraryData && libraryData.libraryItems) {
+          excalidrawAPI.updateLibrary({
+            libraryItems: libraryData.libraryItems,
+            merge: true,
+            prompt: false // 确保初始加载不弹窗
+          });
+          console.log('Library loaded from localStorage');
+        }
+      } catch (error) {
+        console.error('Failed to load library:', error);
+      }
+    };
+
+    loadLibrary();
+  }, [excalidrawAPI]);
+
 
 
 
@@ -277,12 +301,31 @@ const Editor: React.FC = () => {
   }, [hasUnsavedChanges, excalidrawAPI, handleSave]);
 
   // 监听变化
-  const handleChange = useCallback(() => {
+  const handleChange = useCallback((elements: any, appState: any) => {
     setHasUnsavedChanges(true);
+
+    // 保存快照到 LocalStorage,防止意外刷新或跳转导致数据丢失
+    if (id && elements && elements.length > 0) {
+      try {
+        const snapshot = {
+          elements,
+          appState: {
+            viewBackgroundColor: appState.viewBackgroundColor,
+            scrollX: appState.scrollX,
+            scrollY: appState.scrollY,
+            zoom: appState.zoom,
+          },
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(`excalidraw-snapshot-${id}`, JSON.stringify(snapshot));
+      } catch (e) {
+        console.error('Failed to save snapshot', e);
+      }
+    }
 
     // 更新 frames 列表 - 只在真正改变时更新
     if (excalidrawAPI) {
-      const elements = excalidrawAPI.getSceneElements();
+      // const elements = excalidrawAPI.getSceneElements(); // 已经作为参数传入
       const frameElements = elements.filter((el: any) => el.type === 'frame' && !el.isDeleted);
 
       // 比较 frame IDs,只在变化时更新
@@ -298,7 +341,8 @@ const Editor: React.FC = () => {
         return frameElements;
       });
     }
-  }, [excalidrawAPI]);
+  }, [excalidrawAPI, id]);
+
 
   // 返回 Dashboard
   const handleBack = () => {
@@ -569,7 +613,124 @@ const Editor: React.FC = () => {
     }
   }, [isEditingTitle]);
 
+  const initialData = useMemo(() => {
+    let data = drawingData?.drawing?.content || {
+      elements: [],
+      appState: {
+        viewBackgroundColor: '#ffffff',
+      },
+    };
+
+    // 尝试从本地快照恢复(用于处理刷新或跳转后的数据恢复)
+    if (id) {
+      try {
+        const snapshotStr = localStorage.getItem(`excalidraw-snapshot-${id}`);
+        if (snapshotStr) {
+          const snapshot = JSON.parse(snapshotStr);
+          // 简单的策略: 如果有快照,就合并快照的 elements 和 appState
+          // 这能解决跳转到素材库回来后数据丢失的问题
+          console.log('Restoring from local snapshot');
+          data = {
+            ...data,
+            elements: snapshot.elements || data.elements,
+            appState: {
+              ...data.appState,
+              ...snapshot.appState,
+            },
+          };
+        }
+      } catch (e) {
+        console.error('Failed to restore snapshot', e);
+      }
+    }
+    return data;
+  }, [drawingData, id]);
+
+
+  // 使用 ref 保存最新的 api 实例,以便在事件监听中使用
+  const excalidrawAPIRef = useRef<any>(null);
+  useEffect(() => {
+    excalidrawAPIRef.current = excalidrawAPI;
+  }, [excalidrawAPI]);
+
+  // 处理跨窗口素材库导入
+  useEffect(() => {
+    const bc = new BroadcastChannel('excalidraw_library_channel');
+
+    // 1. 作为子窗口(从素材库跳回): 发送 hash 给父窗口并关闭
+    const hash = window.location.hash;
+    if (hash.includes('addLibrary')) {
+      console.log('Detected library import in popup, sending to parent via BroadcastChannel...');
+      bc.postMessage({
+        type: 'EXCALIDRAW_LIBRARY_UPDATE',
+        hash: hash
+      });
+
+      // 尝试关闭窗口
+      // 注意: 只有通过 window.open 打开的窗口才能被脚本关闭
+      // 如果是用户点击链接打开的新标签页,这可能无效
+      try {
+        window.close();
+      } catch (e) {
+        console.warn('Failed to close window:', e);
+      }
+      return;
+    }
+
+    // 2. 作为父窗口: 监听来自子窗口的消息
+    bc.onmessage = async (event) => {
+      if (event.data?.type === 'EXCALIDRAW_LIBRARY_UPDATE') {
+        console.log('Received library update from popup');
+
+        // 手动处理导入,以跳过确认弹窗
+        const hash = event.data.hash;
+        const params = new URLSearchParams(hash.slice(1));
+        const libraryUrl = params.get('addLibrary');
+
+        if (libraryUrl && excalidrawAPIRef.current) {
+          try {
+            const decodedUrl = decodeURIComponent(libraryUrl);
+            const request = await fetch(decodedUrl);
+            const blob = await request.blob();
+
+            await excalidrawAPIRef.current.updateLibrary({
+              libraryItems: blob,
+              prompt: false, // 关键: 禁用确认弹窗
+              merge: true,
+              openLibraryMenu: true,
+              defaultStatus: "published"
+            });
+            console.log('Library imported successfully without prompt');
+          } catch (error) {
+            console.error('Failed to import library:', error);
+          }
+        }
+      }
+    };
+
+    return () => bc.close();
+  }, [excalidrawAPI]); // Add excalidrawAPI to dependencies to ensure excalidrawAPIRef.current is up-to-date
+
+  // 检查是否是素材库回调窗口 (放在 useEffect 之后,但在渲染编辑器之前)
+  if (window.location.hash.includes('addLibrary')) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Importing library...</p>
+          <button
+            onClick={() => window.close()}
+            className="mt-4 text-sm text-blue-500 hover:underline"
+          >
+            Close this tab
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
+
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -579,13 +740,6 @@ const Editor: React.FC = () => {
       </div>
     );
   }
-
-  const initialData = drawingData?.drawing?.content || {
-    elements: [],
-    appState: {
-      viewBackgroundColor: '#ffffff',
-    },
-  };
 
   return (
     <div className="h-screen flex flex-col">
@@ -688,7 +842,7 @@ const Editor: React.FC = () => {
             onChange={handleChange}
             theme="light"
             name="Excalidraw Plus"
-            libraryReturnUrl={window.location.origin + window.location.pathname}
+            libraryReturnUrl={window.location.href}
             UIOptions={{
               canvasActions: {
                 loadScene: false,
