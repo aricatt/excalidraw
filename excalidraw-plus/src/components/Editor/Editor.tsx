@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Excalidraw, exportToBlob, DefaultSidebar, Sidebar, Footer } from '@excalidraw/excalidraw';
+import { Excalidraw, exportToBlob, DefaultSidebar, Sidebar, Footer, useHandleLibrary } from '@excalidraw/excalidraw';
+
 
 import { ArrowLeft, Save, Loader2, Check, Edit2 } from 'lucide-react';
 import { drawingAPI } from '../../lib/api';
@@ -35,6 +36,9 @@ const Editor: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [frameOrder, setFrameOrder] = useState<string[]>([]);
   const [frames, setFrames] = useState<any[]>([]);
+
+  // Handle library imports from URL (e.g., from excalidraw.com/libraries)
+  useHandleLibrary({ excalidrawAPI });
 
 
 
@@ -409,11 +413,24 @@ const Editor: React.FC = () => {
 
     // 自动滚动到新创建的 Frame
     setTimeout(() => {
+      // 获取 UI 偏移(包括 Sidebar)
+      let canvasOffsets = excalidrawAPI.getEditorUIOffsets?.() || { top: 0, right: 0, bottom: 0, left: 0 };
+
+      // 如果 getEditorUIOffsets 返回全 0,手动计算 Sidebar 宽度
+      if (canvasOffsets.right === 0 && excalidrawAPI.getAppState().openSidebar?.name === 'default') {
+        const sidebarWidth = 360;
+        canvasOffsets = {
+          ...canvasOffsets,
+          right: sidebarWidth,
+        };
+      }
+
       excalidrawAPI.scrollToContent(newFrame as any, {
         fitToViewport: true,
         animate: true,
+        canvasOffsets, // 传入偏移量,确保考虑 Sidebar 宽度
       });
-      console.log('Scrolled to new frame');
+      console.log('Scrolled to new frame with offsets:', canvasOffsets);
     }, 100);
 
     setHasUnsavedChanges(true);
@@ -435,7 +452,20 @@ const Editor: React.FC = () => {
     if (!frame) return;
 
     // 获取 UI 偏移(包括 Sidebar)并传递给 scrollToContent
-    const canvasOffsets = excalidrawAPI.getEditorUIOffsets?.() || { top: 0, right: 0, bottom: 0, left: 0 };
+    let canvasOffsets = excalidrawAPI.getEditorUIOffsets?.() || { top: 0, right: 0, bottom: 0, left: 0 };
+
+    // 如果 getEditorUIOffsets 返回全 0,手动计算 Sidebar 宽度
+    if (canvasOffsets.right === 0 && excalidrawAPI.getAppState().openSidebar?.name === 'default') {
+      // Sidebar 默认宽度约为 360px (320px + padding)
+      const sidebarWidth = 360;
+      canvasOffsets = {
+        ...canvasOffsets,
+        right: sidebarWidth,
+      };
+    }
+
+    console.log('Frame click - Canvas offsets:', canvasOffsets);
+    console.log('Frame click - Sidebar state:', excalidrawAPI.getAppState().openSidebar);
 
     excalidrawAPI.scrollToContent(frame, {
       fitToViewport: true,
