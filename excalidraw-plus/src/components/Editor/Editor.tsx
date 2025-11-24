@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Excalidraw, exportToBlob } from '@excalidraw/excalidraw';
+import { Excalidraw, exportToBlob, DefaultSidebar, Sidebar, Footer } from '@excalidraw/excalidraw';
+
 import { ArrowLeft, Save, Loader2, Check, Edit2 } from 'lucide-react';
 import { drawingAPI } from '../../lib/api';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import FramesPanel from '../FramesPanel/FramesPanel';
 import PresentationMode from '../PresentationMode/PresentationMode';
+
 
 // 配置 Excalidraw 资源路径,修复字体加载
 if (typeof window !== 'undefined') {
@@ -431,10 +433,30 @@ const Editor: React.FC = () => {
     const frame = frames.find((f: any) => f.id === frameId);
     if (!frame) return;
 
+    // 检查 Sidebar 是否打开并计算偏移
+    const appState = excalidrawAPI.getAppState();
+    const sidebarOpen = appState.openSidebar?.name === 'default';
+
+    // Sidebar 宽度约为 320px,如果打开则需要调整视口
+    const viewportAdjustment = sidebarOpen ? 160 : 0; // 调整中心点偏移
+
+    // 先滚动到 Frame
     excalidrawAPI.scrollToContent(frame, {
       fitToViewport: true,
       animate: true,
     });
+
+    // 如果 Sidebar 打开,稍微向左偏移以补偿
+    if (sidebarOpen) {
+      setTimeout(() => {
+        const currentAppState = excalidrawAPI.getAppState();
+        excalidrawAPI.updateScene({
+          appState: {
+            scrollX: currentAppState.scrollX - viewportAdjustment,
+          },
+        });
+      }, 100);
+    }
   }, [excalidrawAPI, getFrames]);
 
   // 开始演示
@@ -642,9 +664,8 @@ const Editor: React.FC = () => {
         onThirdAction={handleDiscardAndExit}
       />
 
-      {/* Main Content Area - Excalidraw + Frames Panel */}
+      {/* Main Content Area - Excalidraw */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Excalidraw Editor */}
         <div className="flex-1 overflow-hidden">
           <Excalidraw
             excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
@@ -652,27 +673,175 @@ const Editor: React.FC = () => {
             onChange={handleChange}
             theme="light"
             name="Excalidraw Plus"
+            libraryReturnUrl={window.location.origin + window.location.pathname}
             UIOptions={{
               canvasActions: {
                 loadScene: false,
                 saveToActiveFile: false,
               },
             }}
-          />
-        </div>
+          >
+            {/* DefaultSidebar with Frames tab - 只在非演示模式显示 */}
+            {!isPresentationMode && (
+              <DefaultSidebar docked={true}>
+                <DefaultSidebar.TabTriggers>
+                  <Sidebar.TabTrigger tab="frames">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect
+                        x="2"
+                        y="2"
+                        width="16"
+                        height="16"
+                        rx="2"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                  </Sidebar.TabTrigger>
+                </DefaultSidebar.TabTriggers>
+                <Sidebar.Tab tab="frames">
+                  <FramesPanel
+                    frames={frames}
+                    frameOrder={frameOrder}
+                    excalidrawAPI={excalidrawAPI}
+                    onCreateFrame={handleCreateFrame}
+                    onReorderFrames={handleReorderFrames}
+                    onStartPresentation={handleStartPresentation}
+                    onFrameClick={handleFrameClick}
+                  />
+                </Sidebar.Tab>
+              </DefaultSidebar>
+            )}
 
-        {/* Frames Panel - 只在非演示模式显示 */}
-        {!isPresentationMode && (
-          <FramesPanel
-            frames={frames}
-            frameOrder={frameOrder}
-            excalidrawAPI={excalidrawAPI}
-            onCreateFrame={handleCreateFrame}
-            onReorderFrames={handleReorderFrames}
-            onStartPresentation={handleStartPresentation}
-            onFrameClick={handleFrameClick}
-          />
-        )}
+
+            {/* Sidebar Trigger - 显示在工具栏 */}
+            {!isPresentationMode && (
+              <DefaultSidebar.Trigger
+                tab="frames"
+                title="Toggle Sidebar"
+              />
+            )}
+
+            {/* Footer with custom buttons */}
+            {!isPresentationMode && (
+              <Footer>
+                <button
+                  className="custom-footer-btn"
+                  onClick={() => {
+                    // TODO: Implement comment functionality
+                    alert('Add Comment feature coming soon!');
+                  }}
+                  title="Add Comment (C)"
+                  aria-label="Add Comment"
+                  style={{
+                    width: '2rem',
+                    height: '2rem',
+                    padding: '0',
+                    marginRight: '0.5rem',
+                    border: 'none',
+                    borderRadius: '4px',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.25rem',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-gray-10)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2 4C2 2.89543 2.89543 2 4 2H16C17.1046 2 18 2.89543 18 4V12C18 13.1046 17.1046 14 16 14H6L2 18V4Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  className="custom-footer-btn"
+                  onClick={() => {
+                    if (excalidrawAPI) {
+                      const currentState = excalidrawAPI.getAppState();
+                      excalidrawAPI.updateScene({
+                        appState: {
+                          openSidebar: currentState.openSidebar
+                            ? null
+                            : { name: 'default', tab: 'frames' }
+                        }
+                      });
+                    }
+                  }}
+                  title="Toggle Presentation Sidebar"
+                  aria-label="Toggle Sidebar"
+                  style={{
+                    width: '2rem',
+                    height: '2rem',
+                    padding: '0',
+                    border: 'none',
+                    borderRadius: '4px',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.25rem',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-gray-10)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect
+                      x="2"
+                      y="2"
+                      width="16"
+                      height="16"
+                      rx="2"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                    <line
+                      x1="12"
+                      y1="2"
+                      x2="12"
+                      y2="18"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                </button>
+              </Footer>
+            )}
+          </Excalidraw>
+        </div>
       </div>
 
       {/* Presentation Mode Controls */}
