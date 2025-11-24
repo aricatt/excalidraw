@@ -143,8 +143,32 @@ model Drawing {
   collaborations Collaboration[]
   tags          DrawingTag[]
   exports       DrawingExport[] // 导出文件关联
+  comments      Comment[]       // 评论关联
 
   @@map("drawings")
+}
+
+// 评论表
+model Comment {
+  id        String   @id @default(cuid())
+  drawingId String
+  userId    String
+  userName  String   // 冗余字段，避免每次都 join User 表
+  content   String   @db.Text
+  x         Float?   // 画布 X 坐标
+  y         Float?   // 画布 Y 坐标
+  elementId String?  // 可选：关联到特定元素
+  parentId  String?  // 可选：回复功能
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联关系
+  drawing Drawing @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+
+  @@index([drawingId])
+  @@index([parentId])
+  @@map("comments")
+
 }
 
 // 协作表

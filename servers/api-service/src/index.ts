@@ -23,6 +23,7 @@ import collaborationRoutes from './routes/collaboration.js';
 import workspaceRoutes from './routes/workspaces.js';
 import collectionRoutes from './routes/collections.js';
 import tagRoutes from './routes/tags.js';
+import commentRoutes from './routes/comments.js';
 
 // 环境变量
 const PORT = parseInt(process.env.PORT || '3001');
@@ -74,6 +75,8 @@ await fastify.register(collaborationRoutes, { prefix: '/api/collaboration' });
 await fastify.register(workspaceRoutes, { prefix: '/api/workspaces' });
 await fastify.register(collectionRoutes, { prefix: '/api/collections' });
 await fastify.register(tagRoutes, { prefix: '/api/tags' });
+await fastify.register(commentRoutes, { prefix: '/api' });
+
 
 // 健康检查
 fastify.get('/health', async () => {

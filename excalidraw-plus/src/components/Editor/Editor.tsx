@@ -6,11 +6,13 @@ import { Excalidraw, DefaultSidebar, Sidebar, Footer, MainMenu, WelcomeScreen, u
 import { exportToBlob } from '@excalidraw/excalidraw';
 
 
-import { ArrowLeft, Save, Loader2, Check, Edit2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Check, Edit2, MessageSquare } from 'lucide-react';
 import { drawingAPI } from '../../lib/api';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import FramesPanel from '../FramesPanel/FramesPanel';
 import PresentationMode from '../PresentationMode/PresentationMode';
+import { CommentsPanel } from '../CommentsPanel';
+import { CommentOverlay } from '../CommentOverlay';
 import './FooterButtons.css';
 import { localStorageLibraryAdapter } from '../../lib/libraryAdapter';
 
@@ -37,6 +39,8 @@ export const Editor: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [frameOrder, setFrameOrder] = useState<string[]>([]);
   const [frames, setFrames] = useState<any[]>([]);
+  const [isCommentMode, setIsCommentMode] = useState(false);
+
 
 
   // 设置窗口名称，使素材库能够正确返回到当前窗口
@@ -781,6 +785,9 @@ export const Editor: React.FC = () => {
                       />
                     </svg>
                   </Sidebar.TabTrigger>
+                  <Sidebar.TabTrigger tab="comments">
+                    <MessageSquare size={20} />
+                  </Sidebar.TabTrigger>
                 </DefaultSidebar.TabTriggers>
                 <Sidebar.Tab tab="frames">
                   <FramesPanel
@@ -792,6 +799,9 @@ export const Editor: React.FC = () => {
                     onStartPresentation={handleStartPresentation}
                     onFrameClick={handleFrameClick}
                   />
+                </Sidebar.Tab>
+                <Sidebar.Tab tab="comments">
+                  <CommentsPanel drawingId={id!} />
                 </Sidebar.Tab>
               </DefaultSidebar>
             )}
@@ -810,10 +820,9 @@ export const Editor: React.FC = () => {
               <Footer>
                 <div className="custom-footer-buttons-container">
                   <button
-                    className="custom-footer-btn"
+                    className={`custom-footer-btn ${isCommentMode ? 'active' : ''}`}
                     onClick={() => {
-                      // TODO: Implement comment functionality
-                      alert('Add Comment feature coming soon!');
+                      setIsCommentMode(!isCommentMode);
                     }}
                     title="Add Comment (C)"
                     aria-label="Add Comment"
@@ -881,6 +890,16 @@ export const Editor: React.FC = () => {
               </Footer>
             )}
           </Excalidraw>
+
+          {/* 画布评论气泡 Overlay */}
+          {id && (
+            <CommentOverlay
+              drawingId={id}
+              excalidrawAPI={excalidrawAPI}
+              isCommentMode={isCommentMode}
+              onExitCommentMode={() => setIsCommentMode(false)}
+            />
+          )}
         </div>
       </div>
 
