@@ -1,18 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Send, Trash2, Edit2, X } from 'lucide-react';
+import { MessageSquare, Trash2 } from 'lucide-react';
 import { commentAPI } from '../../lib/commentAPI';
-import type { Comment } from '../../types/comment';
 import './CommentsPanel.css';
 
 interface CommentsPanelProps {
     drawingId: string;
+    onSelectComment?: (commentId: string, x: number, y: number) => void;
 }
 
-export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId }) => {
-    const [newComment, setNewComment] = useState('');
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editContent, setEditContent] = useState('');
+export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId, onSelectComment }) => {
     const queryClient = useQueryClient();
 
     // 获取评论列表
@@ -22,26 +19,6 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId }) => {
         enabled: !!drawingId,
     });
 
-    // 创建评论
-    const createMutation = useMutation({
-        mutationFn: commentAPI.createComment,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['comments', drawingId] });
-            setNewComment('');
-        },
-    });
-
-    // 更新评论
-    const updateMutation = useMutation({
-        mutationFn: ({ id, content }: { id: string; content: string }) =>
-            commentAPI.updateComment(id, { content }),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['comments', drawingId] });
-            setEditingId(null);
-            setEditContent('');
-        },
-    });
-
     // 删除评论
     const deleteMutation = useMutation({
         mutationFn: commentAPI.deleteComment,
@@ -49,32 +26,6 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId }) => {
             queryClient.invalidateQueries({ queryKey: ['comments', drawingId] });
         },
     });
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newComment.trim()) {
-            createMutation.mutate({
-                drawingId,
-                content: newComment.trim(),
-            });
-        }
-    };
-
-    const handleEdit = (comment: Comment) => {
-        setEditingId(comment.id);
-        setEditContent(comment.content);
-    };
-
-    const handleUpdate = (id: string) => {
-        if (editContent.trim()) {
-            updateMutation.mutate({ id, content: editContent.trim() });
-        }
-    };
-
-    const handleCancelEdit = () => {
-        setEditingId(null);
-        setEditContent('');
-    };
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -112,11 +63,19 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId }) => {
                     <div className="comments-empty">
                         <MessageSquare size={48} />
                         <p>No comments yet</p>
-                        <span>Be the first to add a comment</span>
+                        <span>Click on the canvas to add a comment</span>
                     </div>
                 ) : (
                     comments.map((comment) => (
-                        <div key={comment.id} className="comment-item">
+                        <div
+                            key={comment.id}
+                            className="comment-item cursor-pointer hover:bg-gray-50 transition-colors"
+                            onClick={() => {
+                                if (comment.x !== undefined && comment.y !== undefined && onSelectComment) {
+                                    onSelectComment(comment.id, comment.x, comment.y);
+                                }
+                            }}
+                        >
                             <div className="comment-header">
                                 <div className="comment-avatar">
                                     {comment.userName.charAt(0).toUpperCase()}
@@ -127,14 +86,12 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId }) => {
                                 </div>
                                 <div className="comment-actions">
                                     <button
-                                        onClick={() => handleEdit(comment)}
-                                        className="comment-action-btn"
-                                        title="Edit"
-                                    >
-                                        <Edit2 size={14} />
-                                    </button>
-                                    <button
-                                        onClick={() => deleteMutation.mutate(comment.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm('Delete this comment?')) {
+                                                deleteMutation.mutate(comment.id);
+                                            }
+                                        }}
                                         className="comment-action-btn comment-delete"
                                         title="Delete"
                                     >
@@ -143,55 +100,14 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId }) => {
                                 </div>
                             </div>
 
-                            {editingId === comment.id ? (
-                                <div className="comment-edit">
-                                    <textarea
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                        className="comment-edit-input"
-                                        autoFocus
-                                    />
-                                    <div className="comment-edit-actions">
-                                        <button
-                                            onClick={() => handleUpdate(comment.id)}
-                                            className="comment-edit-save"
-                                            disabled={!editContent.trim()}
-                                        >
-                                            Save
-                                        </button>
-                                        <button
-                                            onClick={handleCancelEdit}
-                                            className="comment-edit-cancel"
-                                        >
-                                            <X size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="comment-content">{comment.content}</div>
-                            )}
+                            <div className="comment-content line-clamp-2">
+                                {comment.content}
+                            </div>
                         </div>
                     ))
                 )}
             </div>
-
-            <form onSubmit={handleSubmit} className="comment-input-form">
-                <textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Add a comment..."
-                    className="comment-input"
-                    rows={3}
-                />
-                <button
-                    type="submit"
-                    className="comment-submit"
-                    disabled={!newComment.trim() || createMutation.isPending}
-                >
-                    <Send size={16} />
-                    <span>{createMutation.isPending ? 'Sending...' : 'Send'}</span>
-                </button>
-            </form>
         </div>
     );
 };
+

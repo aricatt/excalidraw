@@ -1,13 +1,42 @@
+/* 基础变量 - 浅色模式 */
 .comment-bubble {
+    --cb-bg: #ffffff;
+    --cb-text: #1a1a1a;
+    --cb-text-secondary: #6b7280;
+    --cb-border: #e5e7eb;
+    --cb-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --cb-hover: #f3f4f6;
+    --cb-primary: #6965db;
+    /* Excalidraw purple */
+    --cb-primary-hover: #5b57d1;
+    --cb-danger: #ef4444;
+    --cb-danger-bg: #fef2f2;
+    --cb-input-bg: #ffffff;
+    --cb-input-border: #d1d5db;
+
     z-index: 1000;
     pointer-events: auto;
+    font-family: var(--ui-font, sans-serif);
+}
+
+/* 深色模式适配 - 当父容器有 .theme--dark 类时 */
+:global(.theme--dark) .comment-bubble {
+    --cb-bg: #232329;
+    --cb-text: #f3f4f6;
+    --cb-text-secondary: #9ca3af;
+    --cb-border: #36363c;
+    --cb-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --cb-hover: #2c2c31;
+    --cb-danger-bg: rgba(239, 68, 68, 0.1);
+    --cb-input-bg: #2c2c31;
+    --cb-input-border: #424248;
 }
 
 /* 收起状态的头像 */
 .comment-avatar-collapsed {
     position: relative;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .comment-avatar-collapsed:hover {
@@ -15,65 +44,79 @@
 }
 
 .comment-avatar-circle {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 3px solid white;
-}
-
-.comment-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #ef4444;
-    color: white;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-    border: 2px solid white;
-}
-
-/* 展开的评论卡片 */
-.comment-card {
-    width: 320px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-    padding: 16px;
-    margin-bottom: 12px;
-}
-
-.comment-card-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.comment-avatar-small {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--cb-primary);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     font-size: 14px;
+    box-shadow: var(--cb-shadow);
+    border: 2px solid var(--cb-bg);
+}
+
+.comment-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--cb-danger);
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    border: 2px solid var(--cb-bg);
+}
+
+/* 展开的评论卡片 */
+.comment-card {
+    width: 300px;
+    background: var(--cb-bg);
+    border-radius: 8px;
+    box-shadow: var(--cb-shadow);
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--cb-border);
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.comment-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.comment-avatar-small {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--cb-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
     flex-shrink: 0;
 }
 
@@ -81,18 +124,17 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 2px;
 }
 
 .comment-author {
     font-weight: 600;
-    font-size: 14px;
-    color: #1a1a1a;
+    font-size: 13px;
+    color: var(--cb-text);
 }
 
 .comment-time {
-    font-size: 12px;
-    color: #6b7280;
+    font-size: 11px;
+    color: var(--cb-text-secondary);
 }
 
 .comment-close-btn {
@@ -100,7 +142,7 @@
     border: none;
     padding: 4px;
     cursor: pointer;
-    color: #6b7280;
+    color: var(--cb-text-secondary);
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -109,27 +151,27 @@
 }
 
 .comment-close-btn:hover {
-    background: #f3f4f6;
-    color: #1a1a1a;
+    background: var(--cb-hover);
+    color: var(--cb-text);
 }
 
 .comment-content {
-    padding: 8px 0;
+    padding: 4px 0 8px 0;
     font-size: 14px;
     line-height: 1.5;
-    color: #374151;
+    color: var(--cb-text);
     white-space: pre-wrap;
     word-break: break-word;
 }
 
 /* 回复列表 */
 .comment-replies {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #e5e7eb;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--cb-border);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .comment-reply {
@@ -138,16 +180,16 @@
 }
 
 .comment-avatar-tiny {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: #10b981;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: 11px;
+    font-size: 10px;
     flex-shrink: 0;
 }
 
@@ -158,43 +200,45 @@
 .comment-reply-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: 6px;
+    margin-bottom: 2px;
 }
 
 .comment-text {
     font-size: 13px;
     line-height: 1.4;
-    color: #374151;
+    color: var(--cb-text);
 }
 
 /* 回复输入框 */
 .comment-reply-input {
-    margin-top: 12px;
+    margin-top: 8px;
     display: flex;
-    gap: 8px;
+    gap: 6px;
 }
 
 .comment-reply-input input {
     flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
+    padding: 6px 10px;
+    background: var(--cb-input-bg);
+    border: 1px solid var(--cb-input-border);
+    border-radius: 4px;
     font-size: 13px;
+    color: var(--cb-text);
     outline: none;
     transition: border-color 0.2s;
 }
 
 .comment-reply-input input:focus {
-    border-color: #6366f1;
+    border-color: var(--cb-primary);
 }
 
 .comment-send-btn {
-    background: #6366f1;
+    background: var(--cb-primary);
     color: white;
     border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 6px 10px;
+    border-radius: 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -203,7 +247,7 @@
 }
 
 .comment-send-btn:hover:not(:disabled) {
-    background: #4f46e5;
+    background: var(--cb-primary-hover);
 }
 
 .comment-send-btn:disabled {
@@ -213,80 +257,19 @@
 
 .comment-delete-btn {
     width: 100%;
-    margin-top: 12px;
-    padding: 8px;
+    margin-top: 8px;
+    padding: 6px;
     background: transparent;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    color: #ef4444;
-    font-size: 13px;
+    border: 1px solid var(--cb-border);
+    border-radius: 4px;
+    color: var(--cb-danger);
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .comment-delete-btn:hover {
-    background: #fef2f2;
-    border-color: #ef4444;
-}
-
-/* 暗色主题支持 */
-@media (prefers-color-scheme: dark) {
-    .comment-card {
-        background: #1f2937;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-
-    .comment-author {
-        color: #f3f4f6;
-    }
-
-    .comment-time {
-        color: #9ca3af;
-    }
-
-    .comment-content,
-    .comment-text {
-        color: #d1d5db;
-    }
-
-    .comment-close-btn {
-        color: #9ca3af;
-    }
-
-    .comment-close-btn:hover {
-        background: #374151;
-        color: #f3f4f6;
-    }
-
-    .comment-replies {
-        border-top-color: #374151;
-    }
-
-    .comment-reply-input input {
-        background: #374151;
-        border-color: #4b5563;
-        color: #f3f4f6;
-    }
-
-    .comment-reply-input input:focus {
-        border-color: #6366f1;
-    }
-
-    .comment-delete-btn {
-        border-color: #374151;
-    }
-
-    .comment-delete-btn:hover {
-        background: #7f1d1d;
-        border-color: #ef4444;
-    }
-
-    .comment-avatar-circle {
-        border-color: #1f2937;
-    }
-
-    .comment-badge {
-        border-color: #1f2937;
-    }
+    background: var(--cb-danger-bg);
+    border-color: var(--cb-danger);
 }

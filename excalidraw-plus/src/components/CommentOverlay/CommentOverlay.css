@@ -1,28 +1,60 @@
+/* 基础变量 - 浅色模式 */
 .new-comment-input {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    --co-bg: #ffffff;
+    --co-text: #1a1a1a;
+    --co-border: #e5e7eb;
+    --co-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --co-primary: #6965db;
+    --co-primary-hover: #5b57d1;
+    --co-input-bg: #ffffff;
+    --co-input-border: #d1d5db;
+    --co-btn-secondary-bg: transparent;
+    --co-btn-secondary-border: #d1d5db;
+    --co-btn-secondary-text: #6b7280;
+    --co-btn-secondary-hover: #f3f4f6;
+
+    background: var(--co-bg);
+    border-radius: 8px;
+    box-shadow: var(--co-shadow);
     padding: 12px;
     width: 300px;
     margin-bottom: 12px;
     z-index: 1001;
+    border: 1px solid var(--co-border);
+    font-family: var(--ui-font, sans-serif);
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* 深色模式适配 */
+:global(.theme--dark) .new-comment-input {
+    --co-bg: #232329;
+    --co-text: #f3f4f6;
+    --co-border: #36363c;
+    --co-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --co-input-bg: #2c2c31;
+    --co-input-border: #424248;
+    --co-btn-secondary-border: #4b5563;
+    --co-btn-secondary-text: #9ca3af;
+    --co-btn-secondary-hover: #374151;
 }
 
 .new-comment-input textarea {
     width: 100%;
     min-height: 80px;
-    padding: 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
+    padding: 8px 12px;
+    background: var(--co-input-bg);
+    border: 1px solid var(--co-input-border);
+    border-radius: 4px;
     font-size: 14px;
     font-family: inherit;
+    color: var(--co-text);
     resize: vertical;
     outline: none;
     transition: border-color 0.2s;
 }
 
 .new-comment-input textarea:focus {
-    border-color: #6366f1;
+    border-color: var(--co-primary);
 }
 
 .new-comment-actions {
@@ -33,9 +65,9 @@
 
 .new-comment-actions button {
     flex: 1;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
@@ -43,12 +75,12 @@
 }
 
 .new-comment-actions button:first-child {
-    background: #6366f1;
+    background: var(--co-primary);
     color: white;
 }
 
 .new-comment-actions button:first-child:hover:not(:disabled) {
-    background: #4f46e5;
+    background: var(--co-primary-hover);
 }
 
 .new-comment-actions button:first-child:disabled {
@@ -57,39 +89,12 @@
 }
 
 .new-comment-actions button:last-child {
-    background: transparent;
-    border: 1px solid #d1d5db;
-    color: #6b7280;
+    background: var(--co-btn-secondary-bg);
+    border: 1px solid var(--co-btn-secondary-border);
+    color: var(--co-btn-secondary-text);
 }
 
 .new-comment-actions button:last-child:hover {
-    background: #f3f4f6;
-    border-color: #9ca3af;
-}
-
-/* 暗色主题 */
-@media (prefers-color-scheme: dark) {
-    .new-comment-input {
-        background: #1f2937;
-    }
-
-    .new-comment-input textarea {
-        background: #374151;
-        border-color: #4b5563;
-        color: #f3f4f6;
-    }
-
-    .new-comment-input textarea:focus {
-        border-color: #6366f1;
-    }
-
-    .new-comment-actions button:last-child {
-        border-color: #4b5563;
-        color: #9ca3af;
-    }
-
-    .new-comment-actions button:last-child:hover {
-        background: #374151;
-        border-color: #6b7280;
-    }
+    background: var(--co-btn-secondary-hover);
+    border-color: var(--co-btn-secondary-text);
 }

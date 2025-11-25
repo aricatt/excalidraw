@@ -10,6 +10,8 @@ interface CommentOverlayProps {
     excalidrawAPI: any;
     isCommentMode: boolean;
     onExitCommentMode: () => void;
+    expandedCommentId: string | null;
+    setExpandedCommentId: (id: string | null) => void;
 }
 
 export const CommentOverlay: React.FC<CommentOverlayProps> = ({
@@ -17,8 +19,10 @@ export const CommentOverlay: React.FC<CommentOverlayProps> = ({
     excalidrawAPI,
     isCommentMode,
     onExitCommentMode,
+    expandedCommentId,
+    setExpandedCommentId,
 }) => {
-    const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+    // const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null); // Removed
     const [viewportState, setViewportState] = useState({ zoom: 1, offsetX: 0, offsetY: 0 });
     const [newCommentPos, setNewCommentPos] = useState<{ x: number; y: number } | null>(null);
     const [newCommentText, setNewCommentText] = useState('');

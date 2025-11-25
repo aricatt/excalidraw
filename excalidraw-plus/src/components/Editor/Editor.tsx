@@ -42,6 +42,33 @@ export const Editor: React.FC = () => {
   const [isCommentMode, setIsCommentMode] = useState(false);
 
 
+  const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+
+  // 定位到评论
+  const handleSelectComment = useCallback((commentId: string, x: number, y: number) => {
+    if (!excalidrawAPI) return;
+
+    const appState = excalidrawAPI.getAppState();
+    const { width, height } = appState;
+
+    // 计算居中位置
+    // x, y 是评论在画布上的坐标
+    // scrollX = x - viewportWidth / 2 / zoom
+    const scrollX = x - width / 2 / appState.zoom.value;
+    const scrollY = y - height / 2 / appState.zoom.value;
+
+    excalidrawAPI.updateScene({
+      appState: {
+        ...appState,
+        scrollX,
+        scrollY,
+      }
+    });
+
+    setExpandedCommentId(commentId);
+  }, [excalidrawAPI]);
+
+
 
   // 设置窗口名称，使素材库能够正确返回到当前窗口
   useEffect(() => {
@@ -801,7 +828,10 @@ export const Editor: React.FC = () => {
                   />
                 </Sidebar.Tab>
                 <Sidebar.Tab tab="comments">
-                  <CommentsPanel drawingId={id!} />
+                  <CommentsPanel
+                    drawingId={id!}
+                    onSelectComment={handleSelectComment}
+                  />
                 </Sidebar.Tab>
               </DefaultSidebar>
             )}
@@ -815,76 +845,16 @@ export const Editor: React.FC = () => {
               />
             )}
 
-            {/* Footer with custom buttons */}
+            {/* Footer */}
             {!isPresentationMode && (
               <Footer>
-                <div className="custom-footer-buttons-container">
+                <div className="custom-footer">
                   <button
                     className={`custom-footer-btn ${isCommentMode ? 'active' : ''}`}
-                    onClick={() => {
-                      setIsCommentMode(!isCommentMode);
-                    }}
-                    title="Add Comment (C)"
-                    aria-label="Add Comment"
+                    onClick={() => setIsCommentMode(!isCommentMode)}
+                    title="Comment (C)"
                   >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M2 4C2 2.89543 2.89543 2 4 2H16C17.1046 2 18 2.89543 18 4V12C18 13.1046 17.1046 14 16 14H6L2 18V4Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    className="custom-footer-btn"
-                    onClick={() => {
-                      if (excalidrawAPI) {
-                        const currentState = excalidrawAPI.getAppState();
-                        excalidrawAPI.updateScene({
-                          appState: {
-                            openSidebar: currentState.openSidebar
-                              ? null
-                              : { name: 'default', tab: 'frames' }
-                          }
-                        });
-                      }
-                    }}
-                    title="Toggle Presentation Sidebar"
-                    aria-label="Toggle Sidebar"
-                  >
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <rect
-                        x="2"
-                        y="2"
-                        width="16"
-                        height="16"
-                        rx="2"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      />
-                      <line
-                        x1="12"
-                        y1="2"
-                        x2="12"
-                        y2="18"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      />
-                    </svg>
+                    <MessageSquare size={20} />
                   </button>
                 </div>
               </Footer>
@@ -898,22 +868,26 @@ export const Editor: React.FC = () => {
               excalidrawAPI={excalidrawAPI}
               isCommentMode={isCommentMode}
               onExitCommentMode={() => setIsCommentMode(false)}
+              expandedCommentId={expandedCommentId}
+              setExpandedCommentId={setExpandedCommentId}
             />
           )}
         </div>
       </div>
 
       {/* Presentation Mode Controls */}
-      {isPresentationMode && (
-        <PresentationMode
-          totalSlides={frames.length}
-          currentSlide={currentSlide}
-          onPrevSlide={handlePrevSlide}
-          onNextSlide={handleNextSlide}
-          onExit={handleExitPresentation}
-        />
-      )}
-    </div>
+      {
+        isPresentationMode && (
+          <PresentationMode
+            totalSlides={frames.length}
+            currentSlide={currentSlide}
+            onPrevSlide={handlePrevSlide}
+            onNextSlide={handleNextSlide}
+            onExit={handleExitPresentation}
+          />
+        )
+      }
+    </div >
   );
 };
 
