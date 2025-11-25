@@ -856,6 +856,48 @@ export const Editor: React.FC = () => {
                   >
                     <MessageSquare size={20} />
                   </button>
+                  <button
+                    className="custom-footer-btn"
+                    onClick={() => {
+                      if (excalidrawAPI) {
+                        const currentState = excalidrawAPI.getAppState();
+                        excalidrawAPI.updateScene({
+                          appState: {
+                            openSidebar: currentState.openSidebar
+                              ? null
+                              : { name: 'default', tab: 'frames' }
+                          }
+                        });
+                      }
+                    }}
+                    title="Toggle Sidebar"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect
+                        x="2"
+                        y="2"
+                        width="16"
+                        height="16"
+                        rx="2"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                      <line
+                        x1="12"
+                        y1="2"
+                        x2="12"
+                        y2="18"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                  </button>
                 </div>
               </Footer>
             )}
