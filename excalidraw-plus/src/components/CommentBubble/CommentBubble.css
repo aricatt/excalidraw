@@ -134,11 +134,11 @@
 
 .comment-nav-btn,
 .comment-action-btn {
-    background: transparent;
-    border: none;
+    background: #f3f4f6;
+    border: 1.5px solid #d1d5db;
     padding: 6px;
     border-radius: 4px;
-    color: var(--cb-toolbar-btn-color);
+    color: #374151;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -153,19 +153,73 @@
 
 .comment-nav-btn:not(:disabled):hover,
 .comment-action-btn:hover {
-    background: var(--cb-toolbar-btn-hover-bg);
-    color: var(--cb-toolbar-btn-hover-color);
+    background: #e5e7eb;
+    border-color: #9ca3af;
 }
 
 /* 删除按钮特殊样式 */
-.comment-action-btn[title="Delete Thread"]:hover {
-    background: #fee2e2;
+.comment-action-btn[title="Delete Thread"] {
     color: #dc2626;
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.comment-action-btn[title="Delete Thread"]:hover {
+    background: #fecaca;
+    border-color: #dc2626;
+    color: #b91c1c;
+}
+
+:global(.theme--dark) .comment-nav-btn,
+:global(.theme--dark) .comment-action-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+:global(.theme--dark) .comment-action-btn[title="Delete Thread"] {
+    color: #ef4444;
+    background: rgba(220, 38, 38, 0.2);
+    border-color: #7f1d1d;
 }
 
 :global(.theme--dark) .comment-action-btn[title="Delete Thread"]:hover {
-    background: rgba(220, 38, 38, 0.2);
+    background: rgba(220, 38, 38, 0.3);
+    border-color: #ef4444;
     color: #ef4444;
+}
+
+/* 确认按钮样式 */
+.comment-confirm-btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+}
+
+.comment-confirm-yes {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+
+.comment-confirm-yes:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.comment-confirm-no {
+    background: var(--cb-hover);
+    color: var(--cb-text);
+    border-color: var(--cb-border);
+}
+
+.comment-confirm-no:hover {
+    background: var(--cb-border);
+    border-color: var(--cb-text-secondary);
 }
 
 /* 评论列表 */

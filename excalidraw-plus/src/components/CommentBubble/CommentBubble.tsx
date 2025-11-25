@@ -121,8 +121,20 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
                             {replies.length > 0 ? `${replies.length + 1} comments` : '1 comment'}
                         </div>
                         <div className="comment-actions">
-                            <button className="comment-action-btn" onClick={onDelete} title="Delete Thread"><Trash2 size={16} /></button>
-                            <button className="comment-action-btn" onClick={onToggle} title="Close"><X size={16} /></button>
+                            <button
+                                className="comment-action-btn"
+                                onClick={onDelete}
+                                title="Delete Thread"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                            <button
+                                className="comment-action-btn"
+                                onClick={onToggle}
+                                title="Close"
+                            >
+                                <X size={16} />
+                            </button>
                         </div>
                     </div>
 

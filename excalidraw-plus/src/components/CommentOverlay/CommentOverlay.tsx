@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CommentBubble } from '../CommentBubble/CommentBubble';
 import { commentAPI } from '../../lib/commentAPI';
-import type { Comment } from '../../types/comment';
+import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import './CommentOverlay.css';
 
 interface CommentOverlayProps {
@@ -26,6 +27,7 @@ export const CommentOverlay: React.FC<CommentOverlayProps> = ({
     const [viewportState, setViewportState] = useState({ zoom: 1, offsetX: 0, offsetY: 0 });
     const [newCommentPos, setNewCommentPos] = useState<{ x: number; y: number } | null>(null);
     const [newCommentText, setNewCommentText] = useState('');
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     // 获取评论列表
@@ -180,9 +182,7 @@ export const CommentOverlay: React.FC<CommentOverlayProps> = ({
                                 });
                             }}
                             onDelete={() => {
-                                if (confirm('Delete this comment?')) {
-                                    deleteMutation.mutate(comment.id);
-                                }
+                                setDeleteConfirmId(comment.id);
                             }}
                             replies={replies}
                         />
@@ -232,6 +232,26 @@ export const CommentOverlay: React.FC<CommentOverlayProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog - Rendered via Portal to avoid z-index issues */}
+            {deleteConfirmId !== null && ReactDOM.createPortal(
+                <ConfirmDialog
+                    isOpen={true}
+                    title="Delete Comment"
+                    message="Are you sure you want to delete this comment? This action cannot be undone."
+                    type="danger"
+                    confirmText="Delete"
+                    cancelText="Cancel"
+                    onConfirm={() => {
+                        if (deleteConfirmId) {
+                            deleteMutation.mutate(deleteConfirmId);
+                            setDeleteConfirmId(null);
+                        }
+                    }}
+                    onCancel={() => setDeleteConfirmId(null)}
+                />,
+                document.body
+            )}
         </>
     );
 };
