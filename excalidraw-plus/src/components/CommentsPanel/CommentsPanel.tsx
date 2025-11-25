@@ -11,6 +11,7 @@ interface CommentsPanelProps {
 
 export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId, onSelectComment }) => {
     const queryClient = useQueryClient();
+    const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
 
     // 获取评论列表
     const { data: comments = [], isLoading } = useQuery({
@@ -24,6 +25,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId, onSelec
         mutationFn: commentAPI.deleteComment,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['comments', drawingId] });
+            setDeleteConfirmId(null);
         },
     });
 
@@ -42,6 +44,9 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId, onSelec
         return date.toLocaleDateString();
     };
 
+    // 只显示顶级评论（没有 parentId 的）
+    const topLevelComments = comments.filter(comment => !comment.parentId);
+
     if (isLoading) {
         return (
             <div className="comments-panel">
@@ -55,18 +60,18 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId, onSelec
             <div className="comments-header">
                 <MessageSquare size={20} />
                 <h3>Comments</h3>
-                <span className="comments-count">{comments.length}</span>
+                <span className="comments-count">{topLevelComments.length}</span>
             </div>
 
             <div className="comments-list">
-                {comments.length === 0 ? (
+                {topLevelComments.length === 0 ? (
                     <div className="comments-empty">
                         <MessageSquare size={48} />
                         <p>No comments yet</p>
                         <span>Click on the canvas to add a comment</span>
                     </div>
                 ) : (
-                    comments.map((comment) => (
+                    topLevelComments.map((comment) => (
                         <div
                             key={comment.id}
                             className="comment-item cursor-pointer hover:bg-gray-50 transition-colors"
@@ -85,18 +90,33 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ drawingId, onSelec
                                     <span className="comment-time">{formatDate(comment.createdAt)}</span>
                                 </div>
                                 <div className="comment-actions">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (window.confirm('Delete this comment?')) {
-                                                deleteMutation.mutate(comment.id);
-                                            }
-                                        }}
-                                        className="comment-action-btn comment-delete"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
+                                    {deleteConfirmId === comment.id ? (
+                                        <div className="comment-delete-confirm" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={() => deleteMutation.mutate(comment.id)}
+                                                className="comment-confirm-btn comment-confirm-yes"
+                                            >
+                                                Delete
+                                            </button>
+                                            <button
+                                                onClick={() => setDeleteConfirmId(null)}
+                                                className="comment-confirm-btn comment-confirm-no"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setDeleteConfirmId(comment.id);
+                                            }}
+                                            className="comment-action-btn comment-delete"
+                                            title="Delete"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 

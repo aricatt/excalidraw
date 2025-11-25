@@ -50,16 +50,16 @@ export const Editor: React.FC = () => {
 
     const appState = excalidrawAPI.getAppState();
     const { width, height } = appState;
+    const zoom = appState.zoom.value;
 
-    // 计算居中位置
-    // x, y 是评论在画布上的坐标
-    // scrollX = x - viewportWidth / 2 / zoom
-    const scrollX = x - width / 2 / appState.zoom.value;
-    const scrollY = y - height / 2 / appState.zoom.value;
+    // 计算滚动位置使评论居中
+    // 画布坐标 (x, y) 应该显示在视口中心
+    // scrollX/Y 是画布原点相对于视口左上角的偏移
+    const scrollX = -(x * zoom - width / 2);
+    const scrollY = -(y * zoom - height / 2);
 
     excalidrawAPI.updateScene({
       appState: {
-        ...appState,
         scrollX,
         scrollY,
       }

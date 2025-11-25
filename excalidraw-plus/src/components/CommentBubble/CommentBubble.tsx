@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { MessageSquare, X, Send } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+    X, ChevronLeft, ChevronRight, Check, Link as LinkIcon,
+    Trash2, Smile, MoreVertical, AtSign, ArrowUp
+} from 'lucide-react';
 import type { Comment } from '../../types/comment';
 import './CommentBubble.css';
 
 interface CommentBubbleProps {
     comment: Comment;
-    x: number; // 屏幕坐标
-    y: number; // 屏幕坐标
+    x: number;
+    y: number;
     isExpanded: boolean;
     onToggle: () => void;
     onReply: (content: string) => void;
@@ -25,11 +28,27 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
     replies = [],
 }) => {
     const [replyText, setReplyText] = useState('');
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // 自动调整 textarea 高度
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+    }, [replyText]);
 
     const handleReply = () => {
         if (replyText.trim()) {
             onReply(replyText.trim());
             setReplyText('');
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleReply();
         }
     };
 
@@ -48,6 +67,31 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
         return date.toLocaleDateString();
     };
 
+    // 渲染单个评论项
+    const renderCommentItem = (item: Comment, isReply: boolean = false) => (
+        <div key={item.id} className={`comment-item ${isReply ? 'is-reply' : ''}`}>
+            <div className="comment-item-header">
+                <div className="comment-user-info">
+                    <div className="comment-avatar-small">
+                        {item.userName.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="comment-author">{item.userName}</span>
+                    <span className="comment-dot">•</span>
+                    <span className="comment-time">{formatDate(item.createdAt)}</span>
+                </div>
+                <button className="comment-more-btn">
+                    <MoreVertical size={14} />
+                </button>
+            </div>
+            <div className="comment-content">{item.content}</div>
+            <div className="comment-reactions">
+                <button className="comment-reaction-add">
+                    <Smile size={14} />
+                </button>
+            </div>
+        </div>
+    );
+
     return (
         <div
             className="comment-bubble"
@@ -58,82 +102,62 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
                 transform: 'translate(-50%, -100%)',
             }}
         >
-            {/* 头像（收起状态） */}
-            {!isExpanded && (
-                <div className="comment-avatar-collapsed" onClick={onToggle}>
-                    <div className="comment-avatar-circle">
-                        {comment.userName.charAt(0).toUpperCase()}
-                    </div>
-                    {replies.length > 0 && (
-                        <div className="comment-badge">{replies.length + 1}</div>
-                    )}
+            {/* 收起状态的头像 - 始终显示 */}
+            <div className="comment-avatar-collapsed" onClick={onToggle}>
+                <div className="comment-avatar-circle">
+                    {comment.userName.charAt(0).toUpperCase()}
                 </div>
-            )}
+                {replies.length > 0 && (
+                    <div className="comment-badge">{replies.length + 1}</div>
+                )}
+            </div>
 
-            {/* 展开的评论卡片 */}
+            {/* 展开的评论卡片 - 显示在头像旁边 */}
             {isExpanded && (
                 <div className="comment-card">
-                    <div className="comment-card-header">
-                        <div className="comment-avatar-small">
-                            {comment.userName.charAt(0).toUpperCase()}
+                    {/* 顶部工具栏 */}
+                    <div className="comment-toolbar">
+                        <div className="comment-toolbar-title">
+                            {replies.length > 0 ? `${replies.length + 1} comments` : '1 comment'}
                         </div>
-                        <div className="comment-meta">
-                            <span className="comment-author">{comment.userName}</span>
-                            <span className="comment-time">{formatDate(comment.createdAt)}</span>
+                        <div className="comment-actions">
+                            <button className="comment-action-btn" onClick={onDelete} title="Delete Thread"><Trash2 size={16} /></button>
+                            <button className="comment-action-btn" onClick={onToggle} title="Close"><X size={16} /></button>
                         </div>
-                        <button className="comment-close-btn" onClick={onToggle}>
-                            <X size={16} />
-                        </button>
                     </div>
 
-                    <div className="comment-content">{comment.content}</div>
+                    {/* 评论列表 */}
+                    <div className="comment-thread">
+                        {renderCommentItem(comment)}
+                        {replies.map(reply => renderCommentItem(reply, true))}
+                    </div>
 
-                    {/* 回复列表 */}
-                    {replies.length > 0 && (
-                        <div className="comment-replies">
-                            {replies.map((reply) => (
-                                <div key={reply.id} className="comment-reply">
-                                    <div className="comment-avatar-tiny">
-                                        {reply.userName.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div className="comment-reply-content">
-                                        <div className="comment-reply-header">
-                                            <span className="comment-author">{reply.userName}</span>
-                                            <span className="comment-time">{formatDate(reply.createdAt)}</span>
-                                        </div>
-                                        <div className="comment-text">{reply.content}</div>
-                                    </div>
+                    {/* 底部输入框 */}
+                    <div className="comment-footer">
+                        <div className="comment-input-wrapper">
+                            <textarea
+                                ref={textareaRef}
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Reply, @mention someone..."
+                                rows={1}
+                            />
+                            <div className="comment-input-tools">
+                                <div className="comment-input-left">
+                                    <button className="comment-tool-btn"><Smile size={16} /></button>
+                                    <button className="comment-tool-btn"><AtSign size={16} /></button>
                                 </div>
-                            ))}
+                                <button
+                                    className="comment-send-btn"
+                                    onClick={handleReply}
+                                    disabled={!replyText.trim()}
+                                >
+                                    <ArrowUp size={16} />
+                                </button>
+                            </div>
                         </div>
-                    )}
-
-                    {/* 回复输入框 */}
-                    <div className="comment-reply-input">
-                        <input
-                            type="text"
-                            placeholder="Add a reply..."
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleReply();
-                                }
-                            }}
-                        />
-                        <button
-                            onClick={handleReply}
-                            disabled={!replyText.trim()}
-                            className="comment-send-btn"
-                        >
-                            <Send size={16} />
-                        </button>
                     </div>
-
-                    {/* 删除按钮 */}
-                    <button className="comment-delete-btn" onClick={onDelete}>
-                        Delete Comment
-                    </button>
                 </div>
             )}
         </div>
