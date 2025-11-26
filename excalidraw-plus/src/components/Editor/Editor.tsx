@@ -43,6 +43,7 @@ export const Editor: React.FC = () => {
 
 
   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // 定位到评论
   const handleSelectComment = useCallback((commentId: string, x: number, y: number) => {
@@ -633,12 +634,19 @@ export const Editor: React.FC = () => {
   }, [isEditingTitle]);
 
   const initialData = useMemo(() => {
-    let data = drawingData?.drawing?.content || {
+    // 获取基础数据，如果是新绘图则使用默认值
+    let data = drawingData?.drawing?.content ? { ...drawingData.drawing.content } : {
       elements: [],
       appState: {
         viewBackgroundColor: '#ffffff',
-        openSidebar: null, // 确保初始状态下 Sidebar 是关闭的
       },
+    };
+
+    // 强制设置 Sidebar 默认展开
+    // 注意：我们需要确保 appState 存在
+    data.appState = {
+      ...data.appState,
+      openSidebar: { name: 'default', tab: 'frames' },
     };
 
     // 尝试从本地快照恢复(用于处理刷新或跳转后的数据恢复)
@@ -656,7 +664,7 @@ export const Editor: React.FC = () => {
             appState: {
               ...data.appState,
               ...snapshot.appState,
-              openSidebar: null, // 即使恢复快照,也确保 Sidebar 关闭
+              openSidebar: { name: 'default', tab: 'frames' }, // 恢复快照时也确保 Sidebar 展开
             },
           };
         }
