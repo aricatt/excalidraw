@@ -94,7 +94,7 @@
     border: 1px solid var(--cb-border);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    /* overflow: hidden;  <-- 暂时移除，防止截断 */
     animation: fadeIn 0.15s ease-out;
 }
 
@@ -113,11 +113,13 @@
 /* 顶部工具栏 */
 .comment-toolbar {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
+    justify-content: space-between;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--cb-border);
     background: var(--cb-bg);
+    flex-shrink: 0;
+    /* 防止被压缩 */
 }
 
 .comment-toolbar-title {
@@ -126,24 +128,48 @@
     color: var(--cb-text);
 }
 
-.comment-nav,
-.comment-actions {
+.comment-actions,
+.comment-actions-absolute {
     display: flex;
-    gap: 4px;
+    align-items: center;
+    gap: 8px;
 }
 
-.comment-bubble .comment-nav-btn,
-.comment-bubble .comment-action-btn {
-    background: #f3f4f6;
-    border: 1.5px solid #d1d5db;
-    padding: 6px;
-    border-radius: 4px;
-    color: #374151;
-    cursor: pointer;
+.comment-actions-absolute {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+    /* 确保在内容之上 */
+}
+
+/* 按钮基础样式 */
+.comment-action-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--cb-border);
+    background: transparent;
+    color: var(--cb-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.comment-action-btn:hover {
+    background: var(--cb-hover);
+    color: var(--cb-text);
+    border-color: var(--cb-text-secondary);
+}
+
+/* 删除按钮特有样式 */
+.comment-action-btn.delete:hover {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fca5a5;
 }
 
 .comment-bubble .comment-nav-btn:disabled {

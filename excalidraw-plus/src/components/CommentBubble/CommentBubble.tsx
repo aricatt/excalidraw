@@ -120,24 +120,31 @@ export const CommentBubble: React.FC<CommentBubbleProps> = ({
                         <div className="comment-toolbar-title">
                             {replies.length > 0 ? `${replies.length + 1} comments` : '1 comment'}
                         </div>
-                        <div className="comment-actions">
-                            <button
-                                className="comment-action-btn"
-                                onClick={onDelete}
-                                title="Delete Thread"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                            <button
-                                className="comment-action-btn"
-                                onClick={onToggle}
-                                title="Close"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
                     </div>
 
+                    {/* 绝对定位的动作按钮 */}
+                    <div className="comment-actions-absolute">
+                        <button
+                            className="comment-action-btn delete"
+                            onClick={onDelete}
+                            title="Delete Thread"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                        <button
+                            className="comment-action-btn"
+                            onClick={onToggle}
+                            title="Close"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
                     {/* 评论列表 */}
                     <div className="comment-thread">
                         {renderCommentItem(comment)}
