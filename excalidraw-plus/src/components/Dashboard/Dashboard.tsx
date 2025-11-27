@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, MoreVertical, FolderInput, Tag as TagIcon, Tags, Upload } from 'lucide-react';
+import { Plus, LogOut, FileText, Trash2, Loader2, FolderPlus, FolderInput, Tag as TagIcon, Tags, Upload } from 'lucide-react';
 import { drawingAPI, workspaceAPI, collectionAPI, tagAPI } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import CollectionDialog from '../CollectionDialog/CollectionDialog';
@@ -12,22 +12,31 @@ import TagDialog from '../TagDialog/TagDialog';
 import TagList from '../TagList/TagList';
 import TagSelector from '../TagSelector/TagSelector';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
+import { DashboardContextType } from '../MainLayout/MainLayout';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, logout, initializeAuth } = useAuthStore();
 
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
-  const [isCollectionDialogOpen, setIsCollectionDialogOpen] = useState(false);
-  const [editingCollection, setEditingCollection] = useState<any>(null);
+  // Use context from MainLayout
+  const {
+    selectedCollectionId,
+    setSelectedCollectionId,
+    selectedTagId,
+    setSelectedTagId,
+    isCollectionDialogOpen,
+    setIsCollectionDialogOpen,
+    editingCollection,
+    setEditingCollection,
+    isTagDialogOpen,
+    setIsTagDialogOpen,
+    editingTag,
+    setEditingTag
+  } = useOutletContext<DashboardContextType>();
+
   const [moveMenuId, setMoveMenuId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Tag states
-  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
-  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
-  const [editingTag, setEditingTag] = useState<any>(null);
   const [tagMenuId, setTagMenuId] = useState<string | null>(null);
 
   // File import ref
@@ -36,8 +45,6 @@ const Dashboard: React.FC = () => {
   // Delete confirmation dialog
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [drawingToDelete, setDrawingToDelete] = useState<string | null>(null);
-
-
 
   // 初始化认证状态
   useEffect(() => {
@@ -150,16 +157,8 @@ const Dashboard: React.FC = () => {
     },
   });
 
-  // 删除集合
-  const deleteCollectionMutation = useMutation({
-    mutationFn: collectionAPI.deleteCollection,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-      if (selectedCollectionId) {
-        setSelectedCollectionId(null);
-      }
-    },
-  });
+  // 删除集合 (Managed in AppSidebar now, but we keep mutation here just in case or remove it? AppSidebar handles it.)
+  // Actually AppSidebar handles collection deletion. We can remove it from here if not used.
 
   // 删除绘图
   const deleteMutation = useMutation({
@@ -276,7 +275,7 @@ const Dashboard: React.FC = () => {
     },
   });
 
-  // 删除标签
+  // 删除标签 (Managed in AppSidebar)
   const deleteTagMutation = useMutation({
     mutationFn: (id: string) => tagAPI.deleteTag(id),
     onSuccess: () => {
@@ -284,11 +283,6 @@ const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['drawings'] });
     },
   });
-
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
-  };
 
   const handleCreateDrawing = () => {
     createMutation.mutate();
@@ -316,11 +310,6 @@ const Dashboard: React.FC = () => {
     createCollectionMutation.mutate(data);
   };
 
-  const handleEditCollection = (collection: any) => {
-    setEditingCollection(collection);
-    setIsCollectionDialogOpen(true);
-  };
-
   const handleUpdateCollection = (data: { name: string; description?: string; color?: string }) => {
     if (editingCollection) {
       updateCollectionMutation.mutate({
@@ -334,18 +323,6 @@ const Dashboard: React.FC = () => {
     moveToCollectionMutation.mutate({ drawingId, collectionId });
   };
 
-  // Handle collection selection - clear tag filter
-  const handleSelectCollection = (collectionId: string | null) => {
-    setSelectedCollectionId(collectionId);
-    setSelectedTagId(null); // Clear tag selection when selecting a collection
-  };
-
-  // Handle tag selection - clear collection filter
-  const handleSelectTag = (tagId: string | null) => {
-    setSelectedTagId(tagId);
-    setSelectedCollectionId(null); // Clear collection selection when selecting a tag
-  };
-
   const drawings = drawingsData?.drawings || [];
   const collections = collectionsData?.collections || [];
   const tags = tagsData?.tags || [];
@@ -355,91 +332,9 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white border-r flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b">
-          <h1 className="text-xl font-bold text-gray-900">Excalidraw Plus</h1>
-          {user && (
-            <p className="text-sm text-gray-600 mt-1 truncate">
-              {user.username}
-            </p>
-          )}
-        </div>
-
-        {/* Collections */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase">Collections</h2>
-            <button
-              onClick={() => {
-                setEditingCollection(null);
-                setIsCollectionDialogOpen(true);
-              }}
-              className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-              title="Create collection"
-            >
-              <FolderPlus className="w-4 h-4" />
-            </button>
-          </div>
-
-          <CollectionList
-            collections={collections}
-            selectedCollectionId={selectedCollectionId}
-            onSelectCollection={handleSelectCollection}
-            onEditCollection={handleEditCollection}
-            onDeleteCollection={(id) => deleteCollectionMutation.mutate(id)}
-            onDropDrawing={handleMoveToCollection}
-          />
-
-          {/* Tags */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase">Tags</h2>
-              <button
-                onClick={() => {
-                  setEditingTag(null);
-                  setIsTagDialogOpen(true);
-                }}
-                className="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                title="Create tag"
-              >
-                <Tags className="w-4 h-4" />
-              </button>
-            </div>
-
-            <TagList
-              tags={tags}
-              selectedTagId={selectedTagId}
-              onSelectTag={handleSelectTag}
-              onEditTag={(tag) => {
-                setEditingTag(tag);
-                setIsTagDialogOpen(true);
-              }}
-              onDeleteTag={(id) => {
-                if (confirm('Are you sure you want to delete this tag?')) {
-                  deleteTagMutation.mutate(id);
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+    <>
+      {/* Main Content (Sidebar is now in MainLayout) */}
+      <div className="flex-1 overflow-y-auto">
         {/* Header */}
         <header className="bg-white border-b px-6 py-4">
           <div className="flex flex-col gap-4">
@@ -690,7 +585,7 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Collection Dialog */}
       <CollectionDialog
@@ -735,7 +630,7 @@ const Dashboard: React.FC = () => {
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />
-    </div>
+    </>
   );
 };
 

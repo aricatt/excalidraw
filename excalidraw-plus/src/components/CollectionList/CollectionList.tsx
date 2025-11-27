@@ -18,6 +18,7 @@ interface CollectionListProps {
     onEditCollection: (collection: Collection) => void;
     onDeleteCollection: (collectionId: string) => void;
     onDropDrawing?: (drawingId: string, collectionId: string | null) => void;
+    isCollapsed?: boolean;
 }
 
 const CollectionList: React.FC<CollectionListProps> = ({
@@ -27,6 +28,7 @@ const CollectionList: React.FC<CollectionListProps> = ({
     onEditCollection,
     onDeleteCollection,
     onDropDrawing,
+    isCollapsed = false,
 }) => {
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
     const [dragOverId, setDragOverId] = React.useState<string | null>(null);
@@ -90,15 +92,16 @@ const CollectionList: React.FC<CollectionListProps> = ({
                 onDragOver={(e) => handleDragOver(e, null)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, null)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors ${dragOverId === null ? 'ring-2 ring-blue-500 bg-blue-100' : ''
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-3 py-2 rounded-md transition-colors ${dragOverId === null ? 'ring-2 ring-blue-500 bg-blue-100' : ''
                     } ${selectedCollectionId === null
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-100'
                     }`}
+                title={isCollapsed ? "All Drawings" : undefined}
             >
                 <div className="flex items-center gap-2">
                     <Folder className="w-4 h-4" />
-                    <span className="font-medium">All Drawings</span>
+                    {!isCollapsed && <span className="font-medium">All Drawings</span>}
                 </div>
             </button>
 
@@ -109,38 +112,45 @@ const CollectionList: React.FC<CollectionListProps> = ({
                         onDragOver={(e) => handleDragOver(e, collection.id)}
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, collection.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors group cursor-pointer ${dragOverId === collection.id ? 'ring-2 ring-blue-500 bg-blue-100' : ''
+                        className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-3 py-2 rounded-md transition-colors group cursor-pointer ${dragOverId === collection.id ? 'ring-2 ring-blue-500 bg-blue-100' : ''
                             } ${selectedCollectionId === collection.id
                                 ? 'bg-blue-50 text-blue-700'
                                 : 'text-gray-700 hover:bg-gray-100'
                             }`}
+                        title={isCollapsed ? collection.name : undefined}
                     >
                         <div
-                            className="flex items-center gap-2 flex-1 min-w-0"
+                            className={`flex items-center gap-2 flex-1 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}
                             onClick={() => onSelectCollection(collection.id)}
                         >
                             <div
                                 className="w-4 h-4 rounded flex-shrink-0"
                                 style={{ backgroundColor: collection.color || '#3B82F6' }}
                             />
-                            <span className="font-medium truncate">{collection.name}</span>
-                            {collection._count && collection._count.drawings > 0 && (
-                                <span className="text-xs text-gray-500">
-                                    ({collection._count.drawings})
-                                </span>
+                            {!isCollapsed && (
+                                <>
+                                    <span className="font-medium truncate">{collection.name}</span>
+                                    {collection._count && collection._count.drawings > 0 && (
+                                        <span className="text-xs text-gray-500">
+                                            ({collection._count.drawings})
+                                        </span>
+                                    )}
+                                </>
                             )}
                         </div>
 
-                        <div
-                            onClick={(e) => handleMenuToggle(e, collection.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity cursor-pointer"
-                        >
-                            <MoreVertical className="w-4 h-4" />
-                        </div>
+                        {!isCollapsed && (
+                            <div
+                                onClick={(e) => handleMenuToggle(e, collection.id)}
+                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity cursor-pointer"
+                            >
+                                <MoreVertical className="w-4 h-4" />
+                            </div>
+                        )}
                     </div>
 
                     {/* Dropdown Menu */}
-                    {openMenuId === collection.id && (
+                    {openMenuId === collection.id && !isCollapsed && (
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
                             <button
                                 onClick={(e) => handleEdit(e, collection)}

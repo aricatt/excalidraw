@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Excalidraw, DefaultSidebar, Sidebar, Footer, MainMenu, WelcomeScreen, useHandleLibrary } from "@excalidraw/excalidraw";
+import { Excalidraw, Sidebar, DefaultSidebar, Footer, MainMenu, WelcomeScreen, useHandleLibrary } from "@excalidraw/excalidraw";
 import { exportToBlob } from '@excalidraw/excalidraw';
 
 
@@ -45,29 +45,7 @@ export const Editor: React.FC = () => {
   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // 定位到评论
-  const handleSelectComment = useCallback((commentId: string, x: number, y: number) => {
-    if (!excalidrawAPI) return;
 
-    const appState = excalidrawAPI.getAppState();
-    const { width, height } = appState;
-    const zoom = appState.zoom.value;
-
-    // 计算滚动位置使评论居中
-    // 画布坐标 (x, y) 应该显示在视口中心
-    // scrollX/Y 是画布原点相对于视口左上角的偏移
-    const scrollX = -(x * zoom - width / 2);
-    const scrollY = -(y * zoom - height / 2);
-
-    excalidrawAPI.updateScene({
-      appState: {
-        scrollX,
-        scrollY,
-      }
-    });
-
-    setExpandedCommentId(commentId);
-  }, [excalidrawAPI]);
 
 
 
@@ -373,23 +351,7 @@ export const Editor: React.FC = () => {
     }
   };
 
-  // 保存并离开
-  const handleSaveAndExit = () => {
-    setShowExitDialog(false);
-    handleSave();
-    setTimeout(() => navigate('/'), 500);
-  };
 
-  // 不保存直接离开
-  const handleDiscardAndExit = () => {
-    setShowExitDialog(false);
-    navigate('/');
-  };
-
-  // 取消,留在编辑器
-  const handleCancelExit = () => {
-    setShowExitDialog(false);
-  };
 
   // 获取所有 Frames
   const getFrames = useCallback(() => {
@@ -633,48 +595,6 @@ export const Editor: React.FC = () => {
     }
   }, [isEditingTitle]);
 
-  const initialData = useMemo(() => {
-    // 获取基础数据，如果是新绘图则使用默认值
-    let data = drawingData?.drawing?.content ? { ...drawingData.drawing.content } : {
-      elements: [],
-      appState: {
-        viewBackgroundColor: '#ffffff',
-      },
-    };
-
-    // 强制设置 Sidebar 默认展开
-    // 注意：我们需要确保 appState 存在
-    data.appState = {
-      ...data.appState,
-      openSidebar: { name: 'default', tab: 'frames' },
-    };
-
-    // 尝试从本地快照恢复(用于处理刷新或跳转后的数据恢复)
-    if (id) {
-      try {
-        const snapshotStr = localStorage.getItem(`excalidraw-snapshot-${id}`);
-        if (snapshotStr) {
-          const snapshot = JSON.parse(snapshotStr);
-          // 简单的策略: 如果有快照,就合并快照的 elements 和 appState
-          // 这能解决跳转到素材库回来后数据丢失的问题
-          console.log('Restoring from local snapshot');
-          data = {
-            ...data,
-            elements: snapshot.elements || data.elements,
-            appState: {
-              ...data.appState,
-              ...snapshot.appState,
-              openSidebar: { name: 'default', tab: 'frames' }, // 恢复快照时也确保 Sidebar 展开
-            },
-          };
-        }
-      } catch (e) {
-        console.error('Failed to restore snapshot', e);
-      }
-    }
-    return data;
-  }, [drawingData, id]);
-
 
   if (isLoading) {
 
@@ -689,19 +609,17 @@ export const Editor: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      {/* Toolbar */}
-      <div className="bg-white border-b px-4 py-2 flex items-center justify-between z-10 shadow-sm">
+    <div className="h-full w-full flex flex-col relative overflow-hidden">
+      {/* Header */}
+      <header className="h-14 bg-white border-b flex items-center justify-between px-4 z-10">
         <div className="flex items-center gap-4">
           <button
             onClick={handleBack}
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
 
-          {/* Editable Title */}
           <div className="flex items-center gap-2">
             {isEditingTitle ? (
               <input
@@ -711,93 +629,85 @@ export const Editor: React.FC = () => {
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={handleSaveTitle}
                 onKeyDown={handleTitleKeyDown}
-                className="text-base font-semibold text-gray-900 border-b-2 border-blue-500 focus:outline-none px-2 py-1 min-w-[200px]"
-                placeholder="Untitled"
+                className="px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
               />
             ) : (
               <div className="flex items-center gap-2 group">
-                <h1 className="text-base font-semibold text-gray-900">
-                  {title || 'Untitled'}
-                </h1>
+                <h1 className="text-lg font-medium text-gray-900">{title}</h1>
                 <button
                   onClick={() => setIsEditingTitle(true)}
                   className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded transition-opacity"
-                  title="Edit title"
                 >
                   <Edit2 className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
             )}
-            {lastSaved && !isEditingTitle && (
-              <p className="text-xs text-gray-500">
-                Saved {lastSaved.toLocaleTimeString()}
-              </p>
-            )}
+            {isSaving ? (
+              <span className="text-xs text-gray-500 flex items-center">
+                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                Saving...
+              </span>
+            ) : lastSaved ? (
+              <span className="text-xs text-gray-500 flex items-center">
+                <Check className="w-3 h-3 mr-1" />
+                Saved
+              </span>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {hasUnsavedChanges && (
-            <span className="text-xs text-amber-600">Unsaved changes</span>
-          )}
+        <div className="flex items-center gap-2">
           <button
             onClick={handleSave}
             disabled={isSaving || !hasUnsavedChanges}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : lastSaved && !hasUnsavedChanges ? (
-              <>
-                <Check className="w-4 h-4 mr-2" />
-                Saved
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save
-              </>
-            )}
+            <Save className="w-4 h-4 mr-2" />
+            Save
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Exit Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showExitDialog}
-        title="Unsaved Changes"
-        message="You have unsaved changes. What would you like to do?"
-        type="warning"
-        confirmText="Save & Leave"
-        cancelText="Stay"
-        showThirdButton={true}
-        thirdButtonText="Discard & Leave"
-        onConfirm={handleSaveAndExit}
-        onCancel={handleCancelExit}
-        onThirdAction={handleDiscardAndExit}
-      />
-
-      {/* Main Content Area - Excalidraw */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 overflow-hidden">
+      <div className="flex-1 relative">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+        ) : (
           <Excalidraw
             excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
-            initialData={initialData}
+            initialData={drawingData?.drawing?.content}
             onChange={handleChange}
             theme="light"
             name="Excalidraw Plus"
             libraryReturnUrl={window.location.origin + window.location.pathname}
             UIOptions={{
               canvasActions: {
-                loadScene: false,
-                saveToActiveFile: false,
+                changeViewBackgroundColor: true,
+                clearCanvas: true,
+                export: { saveFileToDisk: true },
+                loadScene: true,
+                saveToActiveFile: true,
+                toggleTheme: true,
+                saveAsImage: true,
               },
             }}
           >
-            {/* DefaultSidebar with Frames tab - 只在非演示模式显示 */}
+            <MainMenu>
+              <MainMenu.DefaultItems.LoadScene />
+              <MainMenu.DefaultItems.SaveToActiveFile />
+              <MainMenu.DefaultItems.Export />
+              <MainMenu.DefaultItems.SaveAsImage />
+              <MainMenu.DefaultItems.ClearCanvas />
+              <MainMenu.Separator />
+              <MainMenu.DefaultItems.ToggleTheme />
+              <MainMenu.DefaultItems.ChangeCanvasBackground />
+            </MainMenu>
+
+            <WelcomeScreen />
+
+            {/* Sidebar with Frames and Comments tabs - 只在非演示模式显示 */}
             {!isPresentationMode && (
               <DefaultSidebar docked={true}>
                 <DefaultSidebar.TabTriggers>
@@ -838,12 +748,22 @@ export const Editor: React.FC = () => {
                 <Sidebar.Tab tab="comments">
                   <CommentsPanel
                     drawingId={id!}
-                    onSelectComment={handleSelectComment}
+                    onSelectComment={(commentId: string, x: number, y: number) => {
+                      if (!excalidrawAPI) return;
+                      const appState = excalidrawAPI.getAppState();
+                      const { width, height } = appState;
+                      const zoom = appState.zoom.value;
+                      const scrollX = -(x * zoom - width / 2);
+                      const scrollY = -(y * zoom - height / 2);
+                      excalidrawAPI.updateScene({
+                        appState: { scrollX, scrollY }
+                      });
+                      setExpandedCommentId(commentId);
+                    }}
                   />
                 </Sidebar.Tab>
               </DefaultSidebar>
             )}
-
 
             {/* Sidebar Trigger - 显示在工具栏 */}
             {!isPresentationMode && (
@@ -909,35 +829,44 @@ export const Editor: React.FC = () => {
                 </div>
               </Footer>
             )}
-          </Excalidraw>
 
-          {/* 画布评论气泡 Overlay */}
-          {id && (
-            <CommentOverlay
-              drawingId={id}
-              excalidrawAPI={excalidrawAPI}
-              isCommentMode={isCommentMode}
-              onExitCommentMode={() => setIsCommentMode(false)}
-              expandedCommentId={expandedCommentId}
-              setExpandedCommentId={setExpandedCommentId}
-            />
-          )}
-        </div>
+            {id && (
+              <CommentOverlay
+                drawingId={id}
+                excalidrawAPI={excalidrawAPI}
+                isCommentMode={isCommentMode}
+                onExitCommentMode={() => setIsCommentMode(false)}
+                expandedCommentId={expandedCommentId}
+                setExpandedCommentId={setExpandedCommentId}
+              />
+            )}
+          </Excalidraw>
+        )}
       </div>
 
-      {/* Presentation Mode Controls */}
-      {
-        isPresentationMode && (
-          <PresentationMode
-            totalSlides={frames.length}
-            currentSlide={currentSlide}
-            onPrevSlide={handlePrevSlide}
-            onNextSlide={handleNextSlide}
-            onExit={handleExitPresentation}
-          />
-        )
-      }
-    </div >
+      <ConfirmDialog
+        isOpen={showExitDialog}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Are you sure you want to leave?"
+        confirmText="Leave"
+        cancelText="Cancel"
+        onConfirm={() => {
+          setShowExitDialog(false);
+          navigate('/');
+        }}
+        onCancel={() => setShowExitDialog(false)}
+      />
+
+      {isPresentationMode && (
+        <PresentationMode
+          totalSlides={frames.length}
+          currentSlide={currentSlide}
+          onPrevSlide={handlePrevSlide}
+          onNextSlide={handleNextSlide}
+          onExit={handleExitPresentation}
+        />
+      )}
+    </div>
   );
 };
 

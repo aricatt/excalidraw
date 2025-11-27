@@ -16,6 +16,7 @@ interface TagListProps {
     onSelectTag: (tagId: string | null) => void;
     onEditTag: (tag: TagItem) => void;
     onDeleteTag: (tagId: string) => void;
+    isCollapsed?: boolean;
 }
 
 const TagList: React.FC<TagListProps> = ({
@@ -24,6 +25,7 @@ const TagList: React.FC<TagListProps> = ({
     onSelectTag,
     onEditTag,
     onDeleteTag,
+    isCollapsed = false,
 }) => {
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
@@ -57,7 +59,7 @@ const TagList: React.FC<TagListProps> = ({
 
     if (tags.length === 0) {
         return (
-            <div className="px-3 py-4 text-center text-sm text-gray-500">
+            <div className={`px-3 py-4 text-center text-sm text-gray-500 ${isCollapsed ? 'hidden' : ''}`}>
                 No tags yet
             </div>
         );
@@ -68,38 +70,41 @@ const TagList: React.FC<TagListProps> = ({
             {tags.map((tag) => (
                 <div key={tag.id} className="relative">
                     <div
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md transition-colors group cursor-pointer ${selectedTagId === tag.id
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'text-gray-700 hover:bg-gray-100'
+                        className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} px-3 py-2 rounded-md transition-colors group cursor-pointer ${selectedTagId === tag.id
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-100'
                             }`}
+                        title={isCollapsed ? tag.name : undefined}
                     >
                         <div
-                            className="flex items-center gap-2 flex-1 min-w-0"
+                            className={`flex items-center gap-2 flex-1 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}
                             onClick={() => onSelectTag(tag.id)}
                         >
                             <span
-                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                                className={`inline-flex items-center ${isCollapsed ? 'w-3 h-3 rounded-full p-0' : 'px-2 py-0.5 rounded-full text-xs font-medium'} text-white`}
                                 style={{ backgroundColor: tag.color || '#3B82F6' }}
                             >
-                                {tag.name}
+                                {!isCollapsed && tag.name}
                             </span>
-                            {tag._count && tag._count.drawings > 0 && (
+                            {!isCollapsed && tag._count && tag._count.drawings > 0 && (
                                 <span className="text-xs text-gray-500">
                                     ({tag._count.drawings})
                                 </span>
                             )}
                         </div>
 
-                        <div
-                            onClick={(e) => handleMenuToggle(e, tag.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity cursor-pointer"
-                        >
-                            <MoreVertical className="w-4 h-4" />
-                        </div>
+                        {!isCollapsed && (
+                            <div
+                                onClick={(e) => handleMenuToggle(e, tag.id)}
+                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity cursor-pointer"
+                            >
+                                <MoreVertical className="w-4 h-4" />
+                            </div>
+                        )}
                     </div>
 
                     {/* Dropdown Menu */}
-                    {openMenuId === tag.id && (
+                    {openMenuId === tag.id && !isCollapsed && (
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
                             <button
                                 onClick={(e) => handleEdit(e, tag)}
