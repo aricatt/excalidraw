@@ -92,6 +92,31 @@ export const Editor: React.FC = () => {
     }
   }, [drawingData]);
 
+  // 处理绘图切换：当 ID 变化时，自动保存旧绘图并加载新绘图
+  useEffect(() => {
+    if (!excalidrawAPI || !drawingData?.drawing) return;
+
+    // 加载新绘图的内容
+    const loadDrawingContent = () => {
+      const content = drawingData.drawing.content;
+      if (content) {
+        console.log('Loading drawing content for ID:', id);
+        excalidrawAPI.updateScene({
+          elements: content.elements || [],
+          appState: {
+            ...content.appState,
+            // 保持一些 UI 状态
+            viewBackgroundColor: content.appState?.viewBackgroundColor || '#ffffff',
+          },
+        });
+        // 重置未保存标记
+        setHasUnsavedChanges(false);
+      }
+    };
+
+    loadDrawingContent();
+  }, [id, drawingData, excalidrawAPI]);
+
   // 清理无效的 Frame index (修复旧数据)
   useEffect(() => {
     if (!excalidrawAPI) return;

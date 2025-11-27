@@ -13,6 +13,7 @@ import TagList from '../TagList/TagList';
 interface AppSidebarProps {
     mode?: 'dashboard' | 'editor';
     currentDrawingId?: string;
+    currentCollectionId?: string;
     // Dashboard props
     selectedCollectionId?: string | null;
     selectedTagId?: string | null;
@@ -22,6 +23,8 @@ interface AppSidebarProps {
     onEditTag?: (tag: any) => void;
     onCreateCollection?: () => void;
     onCreateTag?: () => void;
+    // Editor props
+    onBeforeDrawingSwitch?: () => Promise<void>;
     // Layout props
     isCollapsed: boolean;
     onToggleCollapse: () => void;
@@ -30,6 +33,7 @@ interface AppSidebarProps {
 const AppSidebar: React.FC<AppSidebarProps> = ({
     mode = 'dashboard',
     currentDrawingId,
+    currentCollectionId,
     selectedCollectionId,
     selectedTagId,
     onSelectCollection,
@@ -38,6 +42,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
     onEditTag,
     onCreateCollection,
     onCreateTag,
+    onBeforeDrawingSwitch,
     isCollapsed,
     onToggleCollapse
 }) => {
@@ -93,22 +98,25 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
         enabled: mode === 'editor' && !!currentDrawingId,
     });
     const currentDrawing = currentDrawingData?.drawing;
-    const currentCollectionId = currentDrawing?.collectionId;
+    const detectedCollectionId = currentDrawing?.collectionId || currentCollectionId;
 
     // 5. Drawings in current collection (for Editor Mode)
-    const { data: collectionDrawingsData } = useQuery({
-        queryKey: ['drawings', currentCollectionId],
+    const { data: collectionDrawingsData, isLoading: isLoadingCollectionDrawings } = useQuery({
+        queryKey: ['drawings', detectedCollectionId],
         queryFn: async () => {
             const params: any = { limit: 100 }; // Fetch reasonable amount
-            if (currentCollectionId) {
-                params.collectionId = currentCollectionId;
+            if (detectedCollectionId) {
+                params.collectionId = detectedCollectionId;
             }
+            console.log('Fetching drawings with params:', params);
             const response = await drawingAPI.getDrawings(params);
+            console.log('Drawings response:', response.data);
             return response.data;
         },
-        enabled: mode === 'editor',
+        enabled: mode === 'editor', // 移除 detectedCollectionId 的要求
     });
     const collectionDrawings = collectionDrawingsData?.drawings || [];
+    console.log('Collection drawings:', collectionDrawings.length);
 
     // --- Mutations ---
     const deleteCollectionMutation = useMutation({
@@ -203,7 +211,25 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
     );
 
     const renderEditorContent = () => {
-        const collectionName = collections.find((c: any) => c.id === currentCollectionId)?.name || 'All Drawings';
+        const collectionName = collections.find((c: any) => c.id === detectedCollectionId)?.name || 'All Drawings';
+
+        const handleDrawingClick = async (e: React.MouseEvent, drawingId: string) => {
+            // 如果点击的是当前绘图，不做任何操作
+            if (drawingId === currentDrawingId) {
+                e.preventDefault();
+                return;
+            }
+
+            // 触发自动保存当前绘图
+            if (onBeforeDrawingSwitch) {
+                try {
+                    await onBeforeDrawingSwitch();
+                } catch (error) {
+                    console.error('Failed to save before switching:', error);
+                    // 即使保存失败也允许切换
+                }
+            }
+        };
 
         return (
             <div className="flex-1 overflow-y-auto p-2">
@@ -220,20 +246,57 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
                     )}
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-2">
                     {collectionDrawings.map((drawing: any) => (
                         <Link
                             key={drawing.id}
                             to={`/editor/${drawing.id}`}
-                            className={`flex items-center px-2 py-2 text-sm rounded-md transition-colors ${drawing.id === currentDrawingId
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'text-gray-700 hover:bg-gray-100'
+                            onClick={(e) => handleDrawingClick(e, drawing.id)}
+                            className={`block rounded-md transition-all ${drawing.id === currentDrawingId
+                                ? 'bg-blue-50 ring-2 ring-blue-500'
+                                : 'hover:bg-gray-100'
                                 }`}
                             title={drawing.title}
                         >
-                            <FileText className={`w-4 h-4 flex-shrink-0 ${isCollapsed ? 'mx-auto' : 'mr-2'}`} />
-                            {!isCollapsed && (
-                                <span className="truncate">{drawing.title || 'Untitled'}</span>
+                            {isCollapsed ? (
+                                // 折叠模式：只显示小图标
+                                <div className="p-2 flex items-center justify-center">
+                                    <FileText className="w-4 h-4 text-gray-600" />
+                                </div>
+                            ) : (
+                                // 展开模式：显示缩略图和标题
+                                <div className="p-2">
+                                    {/* 缩略图 */}
+                                    <div className="relative w-full aspect-video bg-gray-100 rounded mb-2 overflow-hidden">
+                                        {drawing.thumbnail ? (
+                                            <img
+                                                src={drawing.thumbnail}
+                                                alt={drawing.title || 'Drawing thumbnail'}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <FileText className="w-8 h-8 text-gray-400" />
+                                            </div>
+                                        )}
+                                        {/* 当前绘图指示器 */}
+                                        {drawing.id === currentDrawingId && (
+                                            <div className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded">
+                                                Current
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* 标题 */}
+                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                        {drawing.title || 'Untitled'}
+                                    </div>
+                                    {/* 更新时间 */}
+                                    {drawing.updatedAt && (
+                                        <div className="text-xs text-gray-500 mt-0.5">
+                                            {new Date(drawing.updatedAt).toLocaleDateString()}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </Link>
                     ))}
