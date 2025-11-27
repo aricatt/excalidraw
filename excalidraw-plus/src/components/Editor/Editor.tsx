@@ -107,6 +107,7 @@ export const Editor: React.FC = () => {
             ...content.appState,
             // 保持一些 UI 状态
             viewBackgroundColor: content.appState?.viewBackgroundColor || '#ffffff',
+            // 不强制设置 openSidebar，让用户自由控制
           },
         });
         // 重置未保存标记
@@ -266,6 +267,7 @@ export const Editor: React.FC = () => {
             currentItemStrokeWidth: appState.currentItemStrokeWidth,
             currentItemRoughness: appState.currentItemRoughness,
             currentItemOpacity: appState.currentItemOpacity,
+            openSidebar: appState.openSidebar, // 保存 sidebar 状态
           },
         },
       });
@@ -337,6 +339,7 @@ export const Editor: React.FC = () => {
             scrollX: appState.scrollX,
             scrollY: appState.scrollY,
             zoom: appState.zoom,
+            openSidebar: appState.openSidebar, // 保存 sidebar 状态
           },
           timestamp: Date.now(),
         };
@@ -702,7 +705,14 @@ export const Editor: React.FC = () => {
         ) : (
           <Excalidraw
             excalidrawAPI={(api: any) => setExcalidrawAPI(api)}
-            initialData={drawingData?.drawing?.content}
+            initialData={{
+              ...drawingData?.drawing?.content,
+              appState: {
+                ...drawingData?.drawing?.content?.appState,
+                // 默认打开右侧 sidebar，显示 frames tab
+                openSidebar: { name: 'default', tab: 'frames' },
+              }
+            }}
             onChange={handleChange}
             theme="light"
             name="Excalidraw Plus"
@@ -788,14 +798,6 @@ export const Editor: React.FC = () => {
                   />
                 </Sidebar.Tab>
               </DefaultSidebar>
-            )}
-
-            {/* Sidebar Trigger - 显示在工具栏 */}
-            {!isPresentationMode && (
-              <DefaultSidebar.Trigger
-                tab="frames"
-                title="Toggle Sidebar"
-              />
             )}
 
             {/* Footer */}

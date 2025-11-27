@@ -10,6 +10,21 @@ import { useAuthStore } from '../../store/authStore';
 import CollectionList from '../CollectionList/CollectionList';
 import TagList from '../TagList/TagList';
 
+// 时间格式化工具函数
+const formatTimeAgo = (dateString: string): string => {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)}w ago`;
+    return `${Math.floor(diffInSeconds / 2592000)}mo ago`;
+};
+
+
 interface AppSidebarProps {
     mode?: 'dashboard' | 'editor';
     currentDrawingId?: string;
@@ -264,10 +279,10 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
                                     <FileText className="w-4 h-4 text-gray-600" />
                                 </div>
                             ) : (
-                                // 展开模式：显示缩略图和标题
-                                <div className="p-2">
-                                    {/* 缩略图 */}
-                                    <div className="relative w-full aspect-video bg-gray-100 rounded mb-2 overflow-hidden">
+                                // 展开模式：左右布局
+                                <div className="p-2 flex gap-3">
+                                    {/* 左侧缩略图 */}
+                                    <div className="relative w-16 h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                                         {drawing.thumbnail ? (
                                             <img
                                                 src={drawing.thumbnail}
@@ -276,26 +291,32 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center">
-                                                <FileText className="w-8 h-8 text-gray-400" />
+                                                <FileText className="w-6 h-6 text-gray-400" />
                                             </div>
                                         )}
                                         {/* 当前绘图指示器 */}
                                         {drawing.id === currentDrawingId && (
-                                            <div className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-2 py-0.5 rounded">
-                                                Current
+                                            <div className="absolute inset-0 border-2 border-blue-500 rounded"></div>
+                                        )}
+                                    </div>
+
+                                    {/* 右侧信息 */}
+                                    <div className="flex-1 min-w-0">
+                                        {/* 标题 */}
+                                        <div className="text-sm font-medium text-gray-900 truncate mb-0.5">
+                                            {drawing.title || 'Untitled'}
+                                        </div>
+                                        {/* 作者 */}
+                                        <div className="text-xs text-gray-500 truncate mb-0.5">
+                                            by {drawing.user?.username || drawing.user?.email || 'Unknown'}
+                                        </div>
+                                        {/* 更新时间 */}
+                                        {drawing.updatedAt && (
+                                            <div className="text-xs text-gray-400">
+                                                {formatTimeAgo(drawing.updatedAt)}
                                             </div>
                                         )}
                                     </div>
-                                    {/* 标题 */}
-                                    <div className="text-sm font-medium text-gray-900 truncate">
-                                        {drawing.title || 'Untitled'}
-                                    </div>
-                                    {/* 更新时间 */}
-                                    {drawing.updatedAt && (
-                                        <div className="text-xs text-gray-500 mt-0.5">
-                                            {new Date(drawing.updatedAt).toLocaleDateString()}
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </Link>

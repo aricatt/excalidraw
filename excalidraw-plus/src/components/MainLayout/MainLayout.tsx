@@ -23,6 +23,7 @@ const MainLayout: React.FC = () => {
     // Extract ID from path: /editor/123 -> 123
     const editorId = isEditor ? location.pathname.split('/')[2] : undefined;
 
+    // AppSidebar 默认展开，只有用户手动点击才会折叠
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     // Dashboard State
