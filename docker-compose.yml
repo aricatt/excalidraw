@@ -1,23 +1,63 @@
+version: '3.8'
+
 services:
-  excalidraw:
+  # 1. 前端服务 (Nginx + React)
+  frontend:
     build:
       context: .
+      dockerfile: excalidraw-plus/Dockerfile
       args:
-        - NODE_ENV=development
-    container_name: excalidraw
+        - VITE_API_URL=http://localhost:6601
     ports:
-      - "3000:80"
-    restart: on-failure
-    stdin_open: true
-    healthcheck:
-      disable: true
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+  # 2. 后端 API 服务
+  backend:
+    build:
+      context: .
+      dockerfile: servers/api-service/Dockerfile
+    ports:
+      - "6601:6601"
     environment:
-      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@db:5432/excalidraw_plus
+      - REDIS_URL=redis://redis:6379
+      - PORT=6601
+      - CORS_ORIGIN=http://localhost
+      - JWT_SECRET=change_this_secret_in_production
+    depends_on:
+      - db
+      - redis
+    restart: always
+
+  # 3. 语音识别服务
+  voice-service:
+    build:
+      context: servers/aliyunasr
+      dockerfile: Dockerfile
+    ports:
+      - "4408:4408"
+    environment:
+      - PORT=4408
+    restart: always
+
+  # 4. 数据库 (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=excalidraw_plus
     volumes:
-      - ./:/opt/node_app/app:delegated
-      - ./package.json:/opt/node_app/package.json
-      - ./yarn.lock:/opt/node_app/yarn.lock
-      - notused:/opt/node_app/app/node_modules
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # 5. 缓存 (Redis)
+  redis:
+    image: redis:alpine
+    restart: always
 
 volumes:
-  notused:
+  postgres_data:
