@@ -22,10 +22,10 @@ const commentRoutes: FastifyPluginAsync = async (fastify) => {
                 orderBy: { createdAt: 'asc' },
             });
 
-            return comments;
+            return reply.send(comments);
         } catch (error) {
             fastify.log.error(error);
-            reply.status(500).send({ error: 'Failed to fetch comments' });
+            return reply.status(500).send({ error: 'Failed to fetch comments' });
         }
     });
 
@@ -74,10 +74,10 @@ const commentRoutes: FastifyPluginAsync = async (fastify) => {
                 },
             });
 
-            reply.status(201).send(comment);
+            return reply.status(201).send(comment);
         } catch (error) {
             fastify.log.error(error);
-            reply.status(500).send({ error: 'Failed to create comment' });
+            return reply.status(500).send({ error: 'Failed to create comment' });
         }
     });
 
@@ -114,10 +114,10 @@ const commentRoutes: FastifyPluginAsync = async (fastify) => {
                 },
             });
 
-            return comment;
+            return reply.send(comment);
         } catch (error) {
             fastify.log.error(error);
-            reply.status(500).send({ error: 'Failed to update comment' });
+            return reply.status(500).send({ error: 'Failed to update comment' });
         }
     });
 
@@ -146,10 +146,10 @@ const commentRoutes: FastifyPluginAsync = async (fastify) => {
                 where: { id },
             });
 
-            reply.status(204).send();
+            return reply.status(204).send();
         } catch (error) {
             fastify.log.error(error);
-            reply.status(500).send({ error: 'Failed to delete comment' });
+            return reply.status(500).send({ error: 'Failed to delete comment' });
         }
     });
 };

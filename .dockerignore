@@ -5,6 +5,8 @@
 !.npmrc
 !.prettierrc
 !excalidraw-app/
+!excalidraw-plus/
+!servers/
 !package.json
 !public/
 !packages/

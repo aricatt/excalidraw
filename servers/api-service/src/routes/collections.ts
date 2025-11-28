@@ -21,7 +21,7 @@ const requireAuth = async (request: any, reply: any) => {
     }
 };
 
-const collectionRoutes: FastifyPluginAsync = async(fastify) => {
+const collectionRoutes: FastifyPluginAsync = async (fastify) => {
     // 获取集合列表
     fastify.get('/', {
         preHandler: requireAuth,
@@ -111,11 +111,11 @@ const collectionRoutes: FastifyPluginAsync = async(fastify) => {
             const collection = await fastify.prisma.collection.create({
                 data: {
                     name,
-                    description,
+                    description: description || null,
                     workspaceId,
                     ownerId: userId,
                     visibility,
-                    color,
+                    color: color || null,
                 },
                 select: {
                     id: true,
@@ -182,9 +182,14 @@ const collectionRoutes: FastifyPluginAsync = async(fastify) => {
                 });
             }
 
+            // 过滤掉 undefined 的字段
+            const cleanUpdateData = Object.fromEntries(
+                Object.entries(updateData).filter(([_, v]) => v !== undefined)
+            );
+
             const updated = await fastify.prisma.collection.update({
                 where: { id },
-                data: updateData,
+                data: cleanUpdateData,
                 select: {
                     id: true,
                     name: true,

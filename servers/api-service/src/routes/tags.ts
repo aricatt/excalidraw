@@ -117,9 +117,14 @@ const tagRoutes: FastifyPluginAsync = async (fastify) => {
             const { id } = request.params;
             const updateData = updateTagSchema.parse(request.body);
 
+            // 过滤掉 undefined 的字段
+            const cleanUpdateData = Object.fromEntries(
+                Object.entries(updateData).filter(([_, v]) => v !== undefined)
+            );
+
             const tag = await fastify.prisma.tag.update({
                 where: { id },
-                data: updateData,
+                data: cleanUpdateData,
                 select: {
                     id: true,
                     name: true,

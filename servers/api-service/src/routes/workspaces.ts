@@ -93,8 +93,8 @@ const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
       const workspace = await fastify.prisma.workspace.create({
         data: {
           name,
-          description,
-          logo,
+          description: description || null,
+          logo: logo || null,
           ownerId: userId,
         },
         select: {
@@ -140,7 +140,7 @@ const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
           details: error.errors,
         });
       }
-      
+
       fastify.log.error(error);
       return reply.code(500).send({
         error: 'Internal server error',
@@ -226,9 +226,14 @@ const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
         });
       }
 
+      // 过滤掉 undefined 的字段
+      const cleanUpdateData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, v]) => v !== undefined)
+      );
+
       const updated = await fastify.prisma.workspace.update({
         where: { id },
-        data: updateData,
+        data: cleanUpdateData,
         select: {
           id: true,
           name: true,
@@ -250,7 +255,7 @@ const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
           details: error.errors,
         });
       }
-      
+
       fastify.log.error(error);
       return reply.code(500).send({
         error: 'Internal server error',
@@ -318,7 +323,7 @@ const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
           details: error.errors,
         });
       }
-      
+
       fastify.log.error(error);
       return reply.code(500).send({
         error: 'Internal server error',

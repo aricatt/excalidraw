@@ -12,8 +12,9 @@ COPY packages ./packages
 # 3. 复制 excalidraw-plus
 COPY excalidraw-plus ./excalidraw-plus
 
-# 4. 安装依赖
-RUN yarn install --frozen-lockfile
+# 4. 安装依赖 (移除 frozen-lockfile 以允许更新 lockfile，添加 ignore-engines 避免版本检查错误)
+ENV YARN_NETWORK_TIMEOUT=600000
+RUN yarn install --ignore-engines
 
 # 5. 构建 excalidraw-plus
 WORKDIR /app/excalidraw-plus
