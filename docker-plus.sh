@@ -37,7 +37,7 @@ fi
 
 echo ""
 echo -e "${GREEN}🎉 部署完成！${NC}"
-echo -e "   - 🏠 前端访问: http://localhost"
+echo -e "   - 🏠 前端访问: http://localhost:4417"
 echo -e "   - 🔌 后端 API: http://localhost:6601"
 echo -e "   - 🎤 语音服务: http://localhost:4408"
 echo ""

@@ -33,7 +33,7 @@ if %ERRORLEVEL% EQU 0 (
 
 echo.
 echo [32m🎉 Deployment Complete![0m
-echo    - Frontend: http://localhost
+echo    - Frontend: http://localhost:4417
 echo    - Backend API: http://localhost:6601
 echo    - Voice Service: http://localhost:4408
 echo.

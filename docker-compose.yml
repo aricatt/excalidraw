@@ -1,15 +1,35 @@
 version: '3.8'
 
 services:
-  # 1. 前端服务 (Nginx + React)
+  # 0. Caddy 网关 (处理 HTTPS)
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - voice-service
+
+  # 1. 前端服务
   frontend:
     build:
       context: .
       dockerfile: excalidraw-plus/Dockerfile
       args:
-        - VITE_API_URL=http://localhost:6601
-    ports:
-      - "80:80"
+        # 注意：这里 API URL 应该指向 Caddy 的域名/IP
+        # 如果是本地测试，用 localhost
+        # 如果是线上，用 https://YOUR_DOMAIN.com
+        - VITE_API_URL=/api
+    # 不需要对外暴露端口，只给 Caddy 访问
+    expose:
+      - "80"
     depends_on:
       - backend
     restart: always
@@ -19,13 +39,14 @@ services:
     build:
       context: .
       dockerfile: servers/api-service/Dockerfile
-    ports:
-      - "6601:6601"
+    expose:
+      - "6601"
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/excalidraw_plus
       - REDIS_URL=redis://redis:6379
       - PORT=6601
-      - CORS_ORIGIN=http://localhost
+      # CORS 允许你的域名
+      - CORS_ORIGIN=https://YOUR_DOMAIN.com
       - JWT_SECRET=change_this_secret_in_production
     depends_on:
       - db
@@ -37,10 +58,11 @@ services:
     build:
       context: servers/aliyunasr
       dockerfile: Dockerfile
-    ports:
-      - "4408:4408"
+    expose:
+      - "4408"
     environment:
       - PORT=4408
+      - ENABLE_HTTPS=false # 让它运行在 HTTP 模式
     restart: always
 
   # 4. 数据库 (PostgreSQL)
@@ -61,3 +83,5 @@ services:
 
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

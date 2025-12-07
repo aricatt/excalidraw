@@ -37,29 +37,34 @@ app.get("/api/websocket-url", async (req, res) => {
   }
 });
 
-// 启动HTTPS服务器（仅支持HTTPS）
-const startHttpsServer = () => {
-  try {
-    const key = fs.readFileSync("server.key");
-    const cert = fs.readFileSync("server.crt");
-    
-    const httpsServer = https.createServer({ key, cert }, app);
-    
-    httpsServer.listen(port, "0.0.0.0", () => {
-      console.log(`🔒 HTTPS语音服务代理服务器正在运行在 https://0.0.0.0:${port}`);
-      console.log(`🔒 局域网HTTPS访问地址: https://192.168.31.244:${port}`);
-      console.log("⚠️  注意: 浏览器可能会提示证书不安全，请选择'继续访问'");
-      console.log("📝 配置的服务器地址: https://192.168.31.244");
-    });
-    
-    return true;
-  } catch (error) {
-    console.error("❌ HTTPS证书未找到，请确保 server.key 和 server.crt 文件存在");
-    console.error("💡 提示: 使用以下命令生成自签名证书:");
-    console.error("   openssl req -x509 -newkey rsa:4096 -keyout server.key -out server.crt -days 365 -nodes");
-    process.exit(1);
+// 启动服务器
+const startServer = () => {
+  const enableHttps = process.env.ENABLE_HTTPS === 'true';
+
+  if (enableHttps) {
+    try {
+      const key = fs.readFileSync("server.key");
+      const cert = fs.readFileSync("server.crt");
+
+      const httpsServer = https.createServer({ key, cert }, app);
+
+      httpsServer.listen(port, "0.0.0.0", () => {
+        console.log(`🔒 HTTPS语音服务代理服务器正在运行在 https://0.0.0.0:${port}`);
+      });
+    } catch (error) {
+      console.error("❌ HTTPS证书未找到，回退到 HTTP 模式");
+      startHttpServer();
+    }
+  } else {
+    startHttpServer();
   }
 };
 
-// 启动HTTPS服务器
-startHttpsServer();
+const startHttpServer = () => {
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`🔓 HTTP语音服务代理服务器正在运行在 http://0.0.0.0:${port}`);
+    console.log("⚠️  注意: 在生产环境中，请确保通过反向代理(如Caddy/Nginx)提供HTTPS支持");
+  });
+};
+
+startServer();
