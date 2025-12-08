@@ -33,9 +33,17 @@ if %ERRORLEVEL% EQU 0 (
 
 echo.
 echo [32m🎉 Deployment Complete![0m
-echo    - Frontend: http://localhost:4417
-echo    - Backend API: http://localhost:6601
-echo    - Voice Service: http://localhost:4408
 echo.
-echo [33mTo view logs: docker-compose logs -f[0m
+echo [32m📱 Access URLs (HTTPS):[0m
+echo    - Frontend: https://localhost
+echo    - Backend API: https://localhost/api
+echo    - Voice Service: https://localhost/voice
+echo.
+echo [33m⚠️  First-time access requires trusting the self-signed certificate[0m
+echo    Chrome: Click 'Advanced' -^> 'Proceed to localhost (unsafe)'
+echo    Edge: Click 'Advanced' -^> 'Continue to localhost (unsafe)'
+echo.
+echo [33m📚 Full deployment guide: type HTTPS_DEPLOYMENT.md[0m
+echo [33m🔍 To view logs: docker-compose logs -f[0m
 pause
+

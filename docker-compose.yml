@@ -6,8 +6,9 @@ services:
     image: caddy:2-alpine
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:80" # HTTP (自动重定向到 HTTPS)
+      - "443:443" # HTTPS
+      - "443:443/udp" # HTTP/3 (QUIC)
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -16,6 +17,8 @@ services:
       - frontend
       - backend
       - voice-service
+    networks:
+      - excalidraw-network
 
   # 1. 前端服务
   frontend:
@@ -23,16 +26,17 @@ services:
       context: .
       dockerfile: excalidraw-plus/Dockerfile
       args:
-        # 注意：这里 API URL 应该指向 Caddy 的域名/IP
-        # 如果是本地测试，用 localhost
-        # 如果是线上，用 https://YOUR_DOMAIN.com
+        # API 请求通过 Caddy 代理，使用相对路径
         - VITE_API_URL=/api
+        - VITE_VOICE_URL=/voice
     # 不需要对外暴露端口，只给 Caddy 访问
     expose:
       - "80"
     depends_on:
       - backend
     restart: always
+    networks:
+      - excalidraw-network
 
   # 2. 后端 API 服务
   backend:
@@ -45,13 +49,15 @@ services:
       - DATABASE_URL=postgresql://postgres:password@db:5432/excalidraw_plus
       - REDIS_URL=redis://redis:6379
       - PORT=6601
-      # CORS 允许你的域名
-      - CORS_ORIGIN=https://YOUR_DOMAIN.com
+      # CORS 配置 - 本地开发使用 localhost，生产环境替换为你的域名
+      - CORS_ORIGIN=https://localhost,https://YOUR_DOMAIN.com
       - JWT_SECRET=change_this_secret_in_production
     depends_on:
       - db
       - redis
     restart: always
+    networks:
+      - excalidraw-network
 
   # 3. 语音识别服务
   voice-service:
@@ -62,8 +68,11 @@ services:
       - "4408"
     environment:
       - PORT=4408
-      - ENABLE_HTTPS=false # 让它运行在 HTTP 模式
+      # 语音服务本身运行在 HTTP，HTTPS 由 Caddy 处理
+      - ENABLE_HTTPS=false
     restart: always
+    networks:
+      - excalidraw-network
 
   # 4. 数据库 (PostgreSQL)
   db:
@@ -75,13 +84,22 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
+    networks:
+      - excalidraw-network
 
   # 5. 缓存 (Redis)
   redis:
     image: redis:alpine
     restart: always
+    networks:
+      - excalidraw-network
 
 volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+
+
+networks:
+  excalidraw-network:
+    driver: bridge

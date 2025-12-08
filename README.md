@@ -100,6 +100,62 @@ yarn add react react-dom @excalidraw/excalidraw
 
 Check out our [documentation](https://docs.excalidraw.com/docs/@excalidraw/excalidraw/installation) for more details!
 
+## 🐳 Docker HTTPS Deployment (Excalidraw Plus)
+
+Deploy the complete Excalidraw Plus stack with **one command** using Docker and Caddy for automatic HTTPS:
+
+### Quick Start
+
+```bash
+# Linux/macOS
+./docker-plus.sh
+
+# Windows
+docker-plus.bat
+```
+
+### What's Included
+
+- ✅ **Frontend** - React/Vite application
+- ✅ **Backend API** - Node.js with PostgreSQL
+- ✅ **Voice Service** - Real-time voice input with WebSocket support
+- ✅ **Automatic HTTPS** - Caddy reverse proxy with auto SSL certificates
+- ✅ **Database** - PostgreSQL with persistent volumes
+- ✅ **Cache** - Redis for session management
+
+### Access URLs
+
+**Local Development:**
+- 🏠 Frontend: `https://localhost`
+- 🔌 API: `https://localhost/api`
+- 🎤 Voice: `https://localhost/voice`
+
+**Production:** Replace `localhost` with your domain name.
+
+### Architecture
+
+```
+Browser (HTTPS) → Caddy Proxy → Frontend :80
+                              → Backend :6601
+                              → Voice Service :4408 (WebSocket)
+                                    ↓
+                              PostgreSQL + Redis
+```
+
+### Documentation
+
+- 📚 [Complete HTTPS Deployment Guide](./HTTPS_DEPLOYMENT.md)
+- 🚀 [Quick Reference](./QUICK_REFERENCE.md)
+- ✅ [Setup Summary](./HTTPS_SETUP_SUMMARY.md)
+
+### Key Features
+
+- **WebSocket over HTTPS** - Voice service works on mobile browsers
+- **Auto SSL Certificates** - Let's Encrypt for production, self-signed for local
+- **Data Persistence** - Database volumes survive container restarts
+- **One-Click Deploy** - Single script handles everything
+- **HTTP/3 Support** - Modern QUIC protocol enabled
+
 ## Contributing
 
 - Missing something or found a bug? [Report here](https://github.com/excalidraw/excalidraw/issues).
