@@ -3,9 +3,24 @@
 # 颜色定义
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}🚀 开始 Excalidraw Plus Docker 部署流程...${NC}"
+echo -e "${BLUE}🚀 开始 Excalidraw Plus 生产环境部署...${NC}"
+echo -e "${YELLOW}   使用外部阿里云 RDS MySQL 数据库${NC}"
+echo -e "${YELLOW}   本地开发请使用: ./docker-dev.sh${NC}"
+echo ""
+
+# 检查 .env 文件是否存在
+if [ ! -f "./servers/api-service/.env" ]; then
+    echo -e "${RED}❌ 错误: 未找到 .env 文件${NC}"
+    echo -e "${YELLOW}请先配置数据库连接：${NC}"
+    echo -e "   1. 复制示例文件: cp servers/api-service/.env.example servers/api-service/.env"
+    echo -e "   2. 编辑 .env 文件，填入阿里云 RDS MySQL 连接信息"
+    echo -e "   3. 格式: DATABASE_URL=\"mysql://用户名:密码@RDS地址:3306/数据库名\""
+    exit 1
+fi
 
 # 1. 停止并清理旧容器
 echo -e "${YELLOW}🛑 正在停止旧容器...${NC}"
@@ -16,23 +31,33 @@ echo -e "${YELLOW}🏗️  正在构建并启动服务 (这可能需要几分钟
 docker-compose up -d --build
 
 if [ $? -ne 0 ]; then
-    echo "❌ Docker 启动失败，请检查错误信息。"
+    echo -e "${RED}❌ Docker 启动失败，请检查错误信息。${NC}"
     exit 1
 fi
 
-# 3. 等待数据库启动
-echo -e "${YELLOW}⏳ 等待数据库服务就绪 (10秒)...${NC}"
-sleep 10
+# 3. 等待服务启动
+echo -e "${YELLOW}⏳ 等待服务启动 (5秒)...${NC}"
+sleep 5
 
 # 4. 执行数据库迁移
-echo -e "${YELLOW}🔄 正在执行数据库迁移/初始化...${NC}"
-docker-compose exec backend npx prisma migrate deploy
+echo -e "${YELLOW}🔄 正在执行数据库迁移...${NC}"
+echo -e "${YELLOW}   连接到阿里云 RDS MySQL...${NC}"
+
+# 尝试执行迁移
+docker-compose exec -T backend npx prisma migrate deploy
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ 数据库迁移成功！${NC}"
 else
-    echo "❌ 数据库迁移失败，请检查后端日志。"
-    # 不退出，因为服务可能已经启动，只是迁移失败
+    echo -e "${RED}❌ 数据库迁移失败${NC}"
+    echo -e "${YELLOW}可能的原因：${NC}"
+    echo -e "   1. RDS MySQL 连接信息不正确"
+    echo -e "   2. RDS 白名单未添加服务器 IP"
+    echo -e "   3. 数据库不存在或权限不足"
+    echo -e ""
+    echo -e "${YELLOW}请检查 servers/api-service/.env 中的 DATABASE_URL 配置${NC}"
+    echo -e "${YELLOW}如果是首次部署，请先在 RDS 中创建数据库：${NC}"
+    echo -e "   CREATE DATABASE excalidraw_plus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 fi
 
 echo ""
@@ -46,6 +71,10 @@ echo ""
 echo -e "${YELLOW}⚠️  首次访问需要信任自签名证书${NC}"
 echo -e "   Chrome: 点击 '高级' → '继续访问 localhost (不安全)'"
 echo -e "   Firefox: 点击 '高级' → '接受风险并继续'"
+echo ""
+echo -e "${YELLOW}💾 数据库信息:${NC}"
+echo -e "   - 使用外部阿里云 RDS MySQL"
+echo -e "   - 数据持久化由阿里云 RDS 管理"
 echo ""
 echo -e "${YELLOW}📚 查看完整部署文档: cat HTTPS_DEPLOYMENT.md${NC}"
 echo -e "${YELLOW}🔍 查看日志命令: docker-compose logs -f${NC}"

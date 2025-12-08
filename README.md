@@ -106,21 +106,39 @@ Deploy the complete Excalidraw Plus stack with **one command** using Docker and 
 
 ### Quick Start
 
+**Two deployment modes available:**
+
+#### 🛠️ Local Development (with MySQL container)
 ```bash
+# Linux/macOS
+./docker-dev.sh
+
+# Windows
+docker-dev.bat
+```
+Perfect for development and testing. Includes a complete MySQL container.
+
+#### 🚀 Production (with Aliyun RDS MySQL)
+```bash
+# Configure RDS connection first
+cp servers/api-service/.env.example servers/api-service/.env
+# Edit .env with your RDS credentials
+
 # Linux/macOS
 ./docker-plus.sh
 
 # Windows
 docker-plus.bat
 ```
+Uses external Aliyun RDS MySQL for production deployment.
 
 ### What's Included
 
 - ✅ **Frontend** - React/Vite application
-- ✅ **Backend API** - Node.js with PostgreSQL
+- ✅ **Backend API** - Node.js with Fastify
 - ✅ **Voice Service** - Real-time voice input with WebSocket support
 - ✅ **Automatic HTTPS** - Caddy reverse proxy with auto SSL certificates
-- ✅ **Database** - PostgreSQL with persistent volumes
+- ✅ **Database** - Aliyun RDS MySQL (external, managed service)
 - ✅ **Cache** - Redis for session management
 
 ### Access URLs
@@ -139,12 +157,15 @@ Browser (HTTPS) → Caddy Proxy → Frontend :80
                               → Backend :6601
                               → Voice Service :4408 (WebSocket)
                                     ↓
-                              PostgreSQL + Redis
+                              Aliyun RDS MySQL + Redis
 ```
 
 ### Documentation
 
+- 🔄 [Dual Environment Guide](./DUAL_ENVIRONMENT_GUIDE.md) - **Start Here!**
 - 📚 [Complete HTTPS Deployment Guide](./HTTPS_DEPLOYMENT.md)
+- 🗄️ [Aliyun RDS MySQL Setup Guide](./RDS_MYSQL_SETUP.md)
+- 🔄 [MySQL Migration Summary](./MYSQL_MIGRATION_SUMMARY.md)
 - 🚀 [Quick Reference](./QUICK_REFERENCE.md)
 - ✅ [Setup Summary](./HTTPS_SETUP_SUMMARY.md)
 
@@ -152,9 +173,10 @@ Browser (HTTPS) → Caddy Proxy → Frontend :80
 
 - **WebSocket over HTTPS** - Voice service works on mobile browsers
 - **Auto SSL Certificates** - Let's Encrypt for production, self-signed for local
-- **Data Persistence** - Database volumes survive container restarts
+- **Managed Database** - Aliyun RDS MySQL with automatic backups and high availability
 - **One-Click Deploy** - Single script handles everything
 - **HTTP/3 Support** - Modern QUIC protocol enabled
+- **Cost Optimized** - Use managed services for better performance and lower costs
 
 ## Contributing
 
