@@ -1,5 +1,8 @@
 FROM node:18-alpine
 
+# 配置 Alpine 镜像源（阿里云）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 
 # 复制 package.json
@@ -16,3 +19,4 @@ EXPOSE 4408
 
 # 启动命令
 CMD ["npm", "start"]
+

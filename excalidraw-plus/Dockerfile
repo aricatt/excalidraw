@@ -1,6 +1,9 @@
 # Build Stage
 FROM node:18-alpine AS builder
 
+# 配置 Alpine 镜像源（阿里云）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 
 # 1. 复制根目录依赖配置
@@ -20,11 +23,18 @@ RUN yarn install --ignore-engines
 WORKDIR /app/excalidraw-plus
 # 注入环境变量 (构建时需要)
 ARG VITE_API_URL
+ARG VITE_VOICE_URL
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_VOICE_URL=$VITE_VOICE_URL
+# 增加 Node.js 内存限制到 4GB
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN yarn build
 
 # Production Stage
 FROM nginx:alpine
+
+# 配置 Alpine 镜像源（阿里云）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 复制构建产物
 COPY --from=builder /app/excalidraw-plus/dist /usr/share/nginx/html
