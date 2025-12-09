@@ -132,6 +132,13 @@ docker-plus.bat
 ```
 Uses external Aliyun RDS MySQL for production deployment.
 
+**Using Podman instead of Docker?**
+```bash
+./podman-dev.sh   # Local development
+./podman-plus.sh  # Production
+```
+See [PODMAN_GUIDE.md](./PODMAN_GUIDE.md) for details.
+
 ### What's Included
 
 - ✅ **Frontend** - React/Vite application
