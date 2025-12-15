@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 从阿里云镜像仓库拉取并部署
+# 部署脚本 - 配合宿主机 Caddy 使用
 
 # 颜色定义
 GREEN='\033[0;32m'
@@ -9,12 +9,12 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}🚀 从阿里云镜像仓库部署 Excalidraw Plus...${NC}"
+echo -e "${BLUE}🚀 从阿里云镜像仓库部署 Excalidraw Plus (Host Caddy Mode)...${NC}"
 echo ""
 
-# 配置（与 build-and-push.sh 保持一致）
+# 配置 - 使用 VPC 地址（内网）
 REGISTRY="crpi-2f6gob7gaag7gqlq-vpc.cn-guangzhou.personal.cr.aliyuncs.com"
-NAMESPACE="excalidraw-plus"  # 替换为你的命名空间
+NAMESPACE="excalidraw-plus"
 VERSION="latest"
 
 # 完整镜像名称
@@ -35,7 +35,7 @@ NETWORK_NAME="excalidraw-network"
 # 1. 登录阿里云镜像仓库
 echo -e "${YELLOW}1️⃣  登录阿里云镜像仓库...${NC}"
 echo "请输入阿里云镜像仓库密码："
-podman login --username=248739402@qq.com $REGISTRY
+podman login --username=tutu_lisheng@aliyun.com $REGISTRY
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ 登录失败${NC}"
@@ -46,18 +46,9 @@ echo ""
 
 # 2. 拉取镜像
 echo -e "${YELLOW}2️⃣  拉取镜像...${NC}"
-
-echo "   拉取前端镜像..."
 podman pull $FRONTEND_IMAGE
-
-echo "   拉取后端镜像..."
 podman pull $BACKEND_IMAGE
-
-echo "   拉取语音服务镜像..."
 podman pull $VOICE_IMAGE
-
-echo "   拉取基础镜像..."
-podman pull caddy:2-alpine
 podman pull redis:alpine
 
 echo -e "${GREEN}✅ 所有镜像拉取成功${NC}"
@@ -86,7 +77,7 @@ echo -e "${YELLOW}5️⃣  启动服务...${NC}"
 # 读取 .env 文件
 source ./servers/api-service/.env
 
-# 启动 Redis
+# 启动 Redis (仅内部使用)
 echo "   启动 Redis..."
 podman run -d \
   --name excalidraw-redis \
@@ -94,11 +85,12 @@ podman run -d \
   --restart always \
   redis:alpine
 
-# 启动后端
+# 启动后端 (暴露 6601)
 echo "   启动后端..."
 podman run -d \
   --name excalidraw-backend \
   --network $NETWORK_NAME \
+  -p 6601:6601 \
   --restart always \
   --env-file ./servers/api-service/.env \
   -e DATABASE_URL="$DATABASE_URL" \
@@ -109,37 +101,25 @@ podman run -d \
   -e NODE_ENV="${NODE_ENV:-production}" \
   $BACKEND_IMAGE
 
-# 启动前端
+# 启动前端 (暴露 8080)
 echo "   启动前端..."
 podman run -d \
   --name excalidraw-frontend \
   --network $NETWORK_NAME \
+  -p 8080:80 \
   --restart always \
   $FRONTEND_IMAGE
 
-# 启动语音服务
+# 启动语音服务 (暴露 4408)
 echo "   启动语音服务..."
 podman run -d \
   --name excalidraw-voice \
   --network $NETWORK_NAME \
+  -p 4408:4408 \
   --restart always \
   -e PORT=4408 \
   -e ENABLE_HTTPS=false \
   $VOICE_IMAGE
-
-# 启动 Caddy
-echo "   启动 Caddy..."
-podman run -d \
-  --name excalidraw-caddy \
-  --network $NETWORK_NAME \
-  --restart always \
-  -p 80:80 \
-  -p 443:443 \
-  -p 443:443/udp \
-  -v $(pwd)/Caddyfile:/etc/caddy/Caddyfile:ro \
-  -v caddy_data:/data \
-  -v caddy_config:/config \
-  caddy:2-alpine
 
 echo -e "${GREEN}✅ 所有服务已启动${NC}"
 echo ""
@@ -160,15 +140,16 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}🎉 部署完成！${NC}"
+echo -e "${GREEN}🎉 部署完成！(Host Caddy Mode)${NC}"
 echo ""
-echo -e "${GREEN}📱 访问地址:${NC}"
-echo -e "   - 🏠 前端: https://localhost"
-echo -e "   - 🔌 API: https://localhost/api"
-echo -e "   - 🎤 语音: https://localhost/voice"
-echo ""
-echo -e "${BLUE}🔧 管理命令:${NC}"
-echo -e "   查看容器: ${YELLOW}podman ps${NC}"
-echo -e "   查看日志: ${YELLOW}podman logs -f excalidraw-backend${NC}"
-echo -e "   重启服务: ${YELLOW}podman restart excalidraw-backend${NC}"
+echo -e "${BLUE}🔧 接下来的步骤 (在服务器上):${NC}"
+echo "1. 安装 Caddy: yum install caddy"
+echo "2. 配置 /etc/caddy/Caddyfile:"
+echo "   :80 {"
+echo "     reverse_proxy /api/* localhost:6601"
+echo "     reverse_proxy /socket.io/* localhost:6601"
+echo "     reverse_proxy /voice/* localhost:4408"
+echo "     reverse_proxy * localhost:8080"
+echo "   }"
+echo "3. 启动 Caddy: systemctl enable --now caddy"
 echo ""
