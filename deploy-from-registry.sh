@@ -82,6 +82,7 @@ echo "   启动 Redis..."
 podman run -d \
   --name excalidraw-redis \
   --network $NETWORK_NAME \
+  --replace \
   --restart always \
   redis:alpine
 
@@ -91,6 +92,7 @@ podman run -d \
   --name excalidraw-backend \
   --network $NETWORK_NAME \
   -p 6601:6601 \
+  --replace \
   --restart always \
   --env-file ./servers/api-service/.env \
   -e DATABASE_URL="$DATABASE_URL" \
@@ -107,6 +109,7 @@ podman run -d \
   --name excalidraw-frontend \
   --network $NETWORK_NAME \
   -p 8080:80 \
+  --replace \
   --restart always \
   $FRONTEND_IMAGE
 
@@ -116,6 +119,7 @@ podman run -d \
   --name excalidraw-voice \
   --network $NETWORK_NAME \
   -p 4408:4408 \
+  --replace \
   --restart always \
   -e PORT=4408 \
   -e ENABLE_HTTPS=false \
