@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "comments" ADD COLUMN     "x" DOUBLE PRECISION,
-ADD COLUMN     "y" DOUBLE PRECISION;
