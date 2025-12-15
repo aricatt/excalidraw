@@ -1,130 +1,14 @@
-# 全局配置
-{
-    # 自动 HTTPS 邮箱 (用于 Let's Encrypt 通知)
-    email your-email@example.com
-    
-    # 本地开发时可以启用这个选项来使用自签名证书
-    # local_certs
-}
-
-# ========================================
-# 生产环境配置 (使用真实域名)
-# ========================================
-# 使用时请取消下面的注释，并替换为你的实际域名
-# YOUR_DOMAIN.com {
-#     # 前端服务 (主页面)
-#     handle /* {
-#         reverse_proxy frontend:80 {
-#             header_up Host {host}
-#             header_up X-Real-IP {remote}
-#             header_up X-Forwarded-For {remote}
-#             header_up X-Forwarded-Proto {scheme}
-#         }
-#     }
-# 
-#     # 后端 API 服务
-#     handle /api/* {
-#         reverse_proxy backend:6601 {
-#             header_up Host {host}
-#             header_up X-Real-IP {remote}
-#             header_up X-Forwarded-For {remote}
-#             header_up X-Forwarded-Proto {scheme}
-#         }
-#     }
-# 
-#     # 语音服务 (支持 WebSocket)
-#     handle /voice/* {
-#         reverse_proxy voice-service:4408 {
-#             # WebSocket 支持
-#             header_up Connection {>Connection}
-#             header_up Upgrade {>Upgrade}
-#             
-#             # 标准代理头
-#             header_up Host {host}
-#             header_up X-Real-IP {remote}
-#             header_up X-Forwarded-For {remote}
-#             header_up X-Forwarded-Proto {scheme}
-#         }
-#     }
-# 
-#     # 启用 gzip 压缩
-#     encode gzip
-# 
-#     # 安全头
-#     header {
-#         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-#         X-Content-Type-Options "nosniff"
-#         X-Frame-Options "SAMEORIGIN"
-#         X-XSS-Protection "1; mode=block"
-#     }
-# 
-#     # 日志
-#     log {
-#         output file /var/log/caddy/access.log
-#     }
-# }
-
-# ========================================
-# 本地开发配置 (使用 localhost + HTTPS)
-# ========================================
-# 本地开发时使用这个配置，Caddy 会自动生成自签名证书
-https://localhost {
-    # 使用自签名证书
+:443 {
+    # 使用自签名证书 (允许通过 IP 访问)
     tls internal
 
-    # 前端服务 (主页面)
-    handle /* {
-        reverse_proxy frontend:80 {
-            header_up Host {host}
-            header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto https
-        }
-    }
+    # 后端 API 代理
+    reverse_proxy /api/* excalidraw-backend:6601
+    reverse_proxy /socket.io/* excalidraw-backend:6601
 
-    # 后端 API 服务
-    handle /api/* {
-        reverse_proxy backend:6601 {
-            header_up Host {host}
-            header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto https
-        }
-    }
+    # 语音服务代理
+    reverse_proxy /voice/* excalidraw-voice:4408
 
-    # 语音服务 (支持 WebSocket)
-    handle /voice/* {
-        reverse_proxy voice-service:4408 {
-            # WebSocket 支持 - 关键配置！
-            header_up Connection {>Connection}
-            header_up Upgrade {>Upgrade}
-            
-            # 标准代理头
-            header_up Host {host}
-            header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto https
-            
-            # 增加超时时间，适配语音流
-            transport http {
-                read_timeout 300s
-                write_timeout 300s
-            }
-        }
-    }
-
-    # 启用 gzip 压缩
-    encode gzip
-
-    # 本地开发的安全头 (相对宽松)
-    header {
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-    }
-
-    # 日志
-    log {
-        output stdout
-        level INFO
-    }
+    # 前端代理 (兜底所有其他请求)
+    reverse_proxy * excalidraw-frontend:80
 }
