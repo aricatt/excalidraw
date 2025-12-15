@@ -35,7 +35,7 @@ NETWORK_NAME="excalidraw-network"
 # 1. 登录阿里云镜像仓库
 echo -e "${YELLOW}1️⃣  登录阿里云镜像仓库...${NC}"
 echo "请输入阿里云镜像仓库密码："
-podman login --username=tutu_lisheng@aliyun.com $REGISTRY
+podman login --username=248739402@qq.com $REGISTRY
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ 登录失败${NC}"
