@@ -20,16 +20,22 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const { email, username, password } = registerSchema.parse(request.body);
 
-      // 白名单检查
+      // 白名单检查 (默认拒绝)
       const allowedEmailsEnv = process.env.ALLOWED_EMAILS;
-      if (allowedEmailsEnv) {
-        const allowedEmails = allowedEmailsEnv.split(',').map(e => e.trim());
-        if (!allowedEmails.includes(email)) {
-          return reply.code(403).send({
-            error: 'Access denied',
-            message: 'Registration is restricted to allowed email addresses only.',
-          });
-        }
+
+      if (!allowedEmailsEnv) {
+        return reply.code(403).send({
+          error: 'Access denied',
+          message: 'Registration is disabled.',
+        });
+      }
+
+      const allowedEmails = allowedEmailsEnv.split(',').map(e => e.trim());
+      if (!allowedEmails.includes(email)) {
+        return reply.code(403).send({
+          error: 'Access denied',
+          message: 'This email is not authorized to register.',
+        });
       }
 
       // 检查用户是否已存在
