@@ -20,6 +20,18 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const { email, username, password } = registerSchema.parse(request.body);
 
+      // 白名单检查
+      const allowedEmailsEnv = process.env.ALLOWED_EMAILS;
+      if (allowedEmailsEnv) {
+        const allowedEmails = allowedEmailsEnv.split(',').map(e => e.trim());
+        if (!allowedEmails.includes(email)) {
+          return reply.code(403).send({
+            error: 'Access denied',
+            message: 'Registration is restricted to allowed email addresses only.',
+          });
+        }
+      }
+
       // 检查用户是否已存在
       const existingUser = await fastify.prisma.user.findFirst({
         where: {
@@ -68,7 +80,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
           details: error.errors,
         });
       }
-      
+
       fastify.log.error(error);
       return reply.code(500).send({
         error: 'Internal server error',
@@ -131,7 +143,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
           details: error.errors,
         });
       }
-      
+
       fastify.log.error(error);
       return reply.code(500).send({
         error: 'Internal server error',
@@ -151,7 +163,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const token = request.headers.authorization?.replace('Bearer ', '');
-      
+
       if (token) {
         // 删除会话记录
         await fastify.prisma.session.deleteMany({
@@ -182,7 +194,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     try {
       const userId = (request.user as any).userId;
-      
+
       const user = await fastify.prisma.user.findUnique({
         where: { id: userId },
         select: {
