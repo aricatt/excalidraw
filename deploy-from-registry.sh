@@ -15,7 +15,7 @@ echo ""
 # 配置 - 使用 VPC 地址（内网）
 REGISTRY="crpi-2f6gob7gaag7gqlq-vpc.cn-guangzhou.personal.cr.aliyuncs.com"
 NAMESPACE="excalidraw-plus"
-VERSION="latest"
+VERSION="v1.0.1"
 
 # 完整镜像名称
 FRONTEND_IMAGE="$REGISTRY/$NAMESPACE/excalidraw-plus-frontend:$VERSION"

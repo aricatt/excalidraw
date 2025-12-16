@@ -1,6 +1,6 @@
 {
   "name": "@excalidraw/api-service",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Excalidraw Plus unified API service",
   "main": "dist/index.js",
   "type": "module",
