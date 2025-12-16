@@ -84,6 +84,7 @@ podman run -d \
   --network $NETWORK_NAME \
   --replace \
   --restart always \
+  --dns 223.5.5.5 \
   redis:alpine
 
 # 启动后端 (暴露 6601)
@@ -94,6 +95,7 @@ podman run -d \
   -p 6601:6601 \
   --replace \
   --restart always \
+  --dns 223.5.5.5 \
   --env-file ./servers/api-service/.env \
   -e DATABASE_URL="$DATABASE_URL" \
   -e REDIS_URL="redis://excalidraw-redis:6379" \
@@ -111,6 +113,7 @@ podman run -d \
   -p 8080:80 \
   --replace \
   --restart always \
+  --dns 223.5.5.5 \
   $FRONTEND_IMAGE
 
 # 启动语音服务 (暴露 4408)
@@ -121,6 +124,7 @@ podman run -d \
   -p 4408:4408 \
   --replace \
   --restart always \
+  --dns 223.5.5.5 \
   -e PORT=4408 \
   -e ENABLE_HTTPS=false \
   $VOICE_IMAGE
@@ -150,7 +154,7 @@ echo -e "${BLUE}🔧 接下来的步骤 (在服务器上):${NC}"
 echo "1. 安装 Caddy: yum install caddy"
 echo "2. 配置 /etc/caddy/Caddyfile:"
 echo "   :80 {"
-echo "     reverse_proxy /api/* localhost:6601"
+echo "     handle_path /api/* { reverse_proxy localhost:6601 }"
 echo "     reverse_proxy /socket.io/* localhost:6601"
 echo "     reverse_proxy /voice/* localhost:4408"
 echo "     reverse_proxy * localhost:8080"
