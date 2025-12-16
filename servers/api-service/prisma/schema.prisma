@@ -128,7 +128,7 @@ model Drawing {
   title       String
   description String?
   content     Json     // Excalidraw 原生 JSON 数据 (elements + appState)
-  thumbnail   String?  // 缩略图 URL
+  thumbnail   String?  @db.LongText // 缩略图 URL (支持 Base64 大图)
   isPublic    Boolean  @default(false)
   version     Int      @default(1) // 版本控制
   workspaceId String?
