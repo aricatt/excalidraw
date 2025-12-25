@@ -12,7 +12,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.get("/api/websocket-url", async (req, res) => {
+// WebSocket URL 获取处理函数
+const handleWebSocketUrl = async (req: express.Request, res: express.Response) => {
   const apiKey = "sk-8e4cdb3bda2f498f935fda53d5d9d681";
 
   if (!apiKey) {
@@ -35,7 +36,23 @@ app.get("/api/websocket-url", async (req, res) => {
       .status(500)
       .json({ error: "服务器在生成WebSocket URL时发生内部错误。" });
   }
+};
+
+// 同时支持直接访问和通过 Caddy 反向代理访问
+// 直接访问: /api/websocket-url (用于开发或直接访问 4408 端口)
+// Caddy 代理: /voice/api/websocket-url (Caddy 转发 /voice/* 时保留原始路径)
+app.get("/api/websocket-url", handleWebSocketUrl);
+app.get("/voice/api/websocket-url", handleWebSocketUrl);
+
+// 健康检查端点
+app.get("/voice/health", (req, res) => {
+  res.json({ status: "ok", service: "voice" });
 });
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", service: "voice" });
+});
+
 
 // 启动服务器
 const startServer = () => {

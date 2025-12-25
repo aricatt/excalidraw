@@ -10,19 +10,20 @@ import { getWebSocketUrlEndpoint, type VoiceServiceConfig } from "./config";
 export class AliyunVoiceService implements VoiceInputService {
   private audioRecorder: AliyunAudioRecorder | null = null;
   private websocketClient: AliyunWebSocketClient | null = null;
-  private onResultCallback: (text: string) => void = () => {};
-  private onInterimResultCallback: (text: string) => void = () => {};
-  private onErrorCallback: (error: any) => void = () => {};
-  private onEndCallback: () => void = () => {};
-  private onRestartCallback: () => void = () => {};
+  private onResultCallback: (text: string) => void = () => { };
+  private onInterimResultCallback: (text: string) => void = () => { };
+  private onErrorCallback: (error: any) => void = () => { };
+  private onEndCallback: () => void = () => { };
+  private onRestartCallback: () => void = () => { };
   private isRunning: boolean = false;
   private config: VoiceServiceConfig;
   private languageHints: string[];
 
   constructor(config?: Partial<VoiceServiceConfig>, languageHints: string[] = ["zh"]) {
     // 使用传入的配置或默认配置
+    // serverUrl 为空时，将自动使用当前页面的 origin
     this.config = {
-      serverUrl: "https://192.168.31.244",
+      serverUrl: "", // 使用当前页面的 origin，通过 Caddy 反向代理访问
       port: 4408,
       forceHttps: true,
       ...config
@@ -60,7 +61,7 @@ export class AliyunVoiceService implements VoiceInputService {
 
       // 2. 创建并连接WebSocket客户端
       this.websocketClient = new AliyunWebSocketClient(websocketUrl, this.languageHints);
-      
+
       // 设置WebSocket回调
       this.websocketClient.onResult((result: AliyunRecognitionResult) => {
         if (result.isFinal) {
@@ -86,7 +87,7 @@ export class AliyunVoiceService implements VoiceInputService {
 
       // 3. 创建并连接音频录制器
       this.audioRecorder = new AliyunAudioRecorder();
-      
+
       await this.audioRecorder.connect((audioData: Int16Array) => {
         // 将音频数据发送到WebSocket
         if (this.websocketClient && this.isRunning) {
@@ -182,13 +183,13 @@ export class AliyunVoiceService implements VoiceInputService {
     try {
       const endpoint = getWebSocketUrlEndpoint(this.config);
       const response = await fetch(endpoint);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      
+
       if (!data.websocketUrl) {
         throw new Error("后端返回的数据中缺少websocketUrl字段");
       }

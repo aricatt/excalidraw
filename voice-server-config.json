@@ -1,6 +1,6 @@
 {
-  "serverUrl": "https://192.168.31.244",
+  "serverUrl": "",
   "port": 4408,
   "forceHttps": true,
-  "description": "语音服务器配置文件 - 修改 serverUrl 来适配你的网络环境"
+  "description": "语音服务器配置文件 - serverUrl 为空时自动使用当前页面的 origin（推荐用于 Caddy 反向代理部署）"
 }

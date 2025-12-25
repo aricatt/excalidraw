@@ -22,10 +22,10 @@ import {
   toolIsArrow,
 } from "@excalidraw/element";
 
-import { 
-  createVoiceInputService, 
+import {
+  createVoiceInputService,
   type VoiceServiceProvider,
-  type VoiceServiceConfig 
+  type VoiceServiceConfig
 } from "../voice-input/index";
 
 import type {
@@ -107,17 +107,17 @@ const formatLongSentence = (text: string): string => {
   if (text.length <= 30) {
     return text; // 短句子不需要处理
   }
-  
+
   let result = "";
   let charCount = 0;
-  
+
   console.log("📝 格式化长句子:", `"${text}"`);
-  
+
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
     result += char;
     charCount++;
-    
+
     // 如果遇到逗号且已经超过30个字符，添加换行符
     if ((char === "，" || char === ",") && charCount >= 30) {
       result += "\n";
@@ -125,7 +125,7 @@ const formatLongSentence = (text: string): string => {
       console.log("📝 在位置", i, "添加换行，字符:", char);
     }
   }
-  
+
   console.log("📝 格式化结果:", `"${result}"`);
   return result;
 };
@@ -170,11 +170,11 @@ export const canChangeBackgroundColor = (
 };
 
 // 语音输入按钮组件
-const VoiceInputButton = ({ 
-  targetElements, 
+const VoiceInputButton = ({
+  targetElements,
   app,
   isInEditMode
-}: { 
+}: {
   targetElements: readonly ExcalidrawElement[];
   app: AppClassProperties;
   isInEditMode: boolean;
@@ -214,18 +214,18 @@ const VoiceInputButton = ({
   // 停止录音的通用函数
   const handleStopRecording = () => {
     console.log("🔚 [DEBUG] 开始停止录音流程");
-    console.log("🔚 [DEBUG] 当前状态:", { 
-      isListening, 
+    console.log("🔚 [DEBUG] 当前状态:", {
+      isListening,
       isConnecting,
-      hasVoiceService: !!voiceServiceRef.current 
+      hasVoiceService: !!voiceServiceRef.current
     });
-    
+
     if (voiceServiceRef.current) {
       console.log("🔚 [DEBUG] 停止语音服务");
       voiceServiceRef.current.stop();
       voiceServiceRef.current = null;
     }
-    
+
     console.log("🔄 [DEBUG] 重置状态: isListening=false");
     setIsListening(false);
   };
@@ -233,22 +233,22 @@ const VoiceInputButton = ({
   // 开始录音 - 按下按钮时触发
   const handleVoiceStart = async () => {
     console.log("🎤 [DEBUG] 按下录音按钮");
-    console.log("🎤 [DEBUG] 当前状态:", { 
-      isListening, 
-      isConnecting, 
+    console.log("🎤 [DEBUG] 当前状态:", {
+      isListening,
+      isConnecting,
       isInEditMode,
-      hasVoiceService: !!voiceServiceRef.current 
+      hasVoiceService: !!voiceServiceRef.current
     });
-    
+
     // 如果已经在录音或正在连接，不重复开始
     if (isListening || isConnecting) {
-      console.log("⚠️ [DEBUG] 跳过启动，原因:", { 
+      console.log("⚠️ [DEBUG] 跳过启动，原因:", {
         isListening: isListening ? "正在录音" : false,
         isConnecting: isConnecting ? "正在连接" : false
       });
       return;
     }
-    
+
     // 如果不在编辑模式，不允许使用语音输入
     if (!isInEditMode) {
       setError("请先进入文本编辑模式");
@@ -259,7 +259,7 @@ const VoiceInputButton = ({
     setIsConnecting(true);
     console.log("🔄 [DEBUG] 设置连接状态为 true");
     setError(null);
-    
+
     try {
       await startVoiceRecording();
     } catch (error) {
@@ -273,13 +273,13 @@ const VoiceInputButton = ({
   const handleVoiceStop = () => {
     console.log("🛑 [DEBUG] 松开录音按钮");
     console.log("🛑 [DEBUG] 当前状态:", { isListening, isConnecting });
-    
+
     // 重置连接状态（如果正在连接中被打断）
     if (isConnecting) {
       console.log("🔄 [DEBUG] 连接中被打断，重置连接状态");
       setIsConnecting(false);
     }
-    
+
     // 如果没在录音，不需要停止
     if (!isListening) {
       console.log("⚠️ [DEBUG] 没有在录音，跳过停止操作");
@@ -294,7 +294,7 @@ const VoiceInputButton = ({
   const startVoiceRecording = async () => {
     console.log("🚀 [DEBUG] 开始 startVoiceRecording");
     console.log("🚀 [DEBUG] 当前状态:", { isListening, isConnecting });
-    
+
     // 清理之前的语音服务
     if (voiceServiceRef.current) {
       console.log("🧹 [DEBUG] 清理之前的语音服务");
@@ -304,75 +304,75 @@ const VoiceInputButton = ({
 
     // 创建语音服务实例
     const VoiceService = voiceProvider === "aliyun" ? AliyunVoiceService : BrowserVoiceInputService;
-    voiceServiceRef.current = voiceProvider === "aliyun" 
+    voiceServiceRef.current = voiceProvider === "aliyun"
       ? new VoiceService(undefined, selectedLanguages)
       : new VoiceService();
 
     // 设置回调函数
     voiceServiceRef.current.onResult((text: string) => {
       console.log("✅ 最终识别结果:", text);
-      
+
       if (text.trim()) {
         // 如果在编辑模式，追加文本到编辑器
         if (isInEditMode) {
           console.log("🎯 在编辑模式下，追加最终句子");
-          
+
           // 查找当前的文本编辑器
           const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
           if (textEditor) {
             let voiceText = text.trim();
             console.log("🎤 原始语音文本:", `"${voiceText}"`, "长度:", voiceText.length);
-            
+
             // 对长句子进行自动换行处理：每30个字符后的逗号后添加换行
             voiceText = formatLongSentence(voiceText);
-            
+
             // 获取当前光标位置，在此位置追加新句子
             const currentPosition = textEditor.selectionStart;
             const currentText = textEditor.value;
-            
+
             // 检查语音文本是否以句子结束符结尾
             const isCompleteSentence = /[。！？.!?]$/.test(voiceText);
             console.log("🔍 完整句子检测:", `"${voiceText}"`, "→", isCompleteSentence, "最后字符码:", voiceText.charCodeAt(voiceText.length - 1));
-            
+
             // 检查是否需要添加分隔符
-            const needSeparator = currentPosition > 0 && 
-                                 currentText[currentPosition - 1] !== ' ' && 
-                                 currentText[currentPosition - 1] !== '\n';
-            
+            const needSeparator = currentPosition > 0 &&
+              currentText[currentPosition - 1] !== ' ' &&
+              currentText[currentPosition - 1] !== '\n';
+
             // 根据情况选择分隔符：完整句子用换行，否则用空格
             let separator = '';
             if (needSeparator) {
               separator = ' '; // 默认用空格
             }
-            
+
             // 如果是完整句子，在末尾添加换行符
             const suffix = isCompleteSentence ? '\n' : '';
-            
+
             const beforeText = currentText.slice(0, currentPosition);
             const afterText = currentText.slice(currentPosition);
             const newText = beforeText + separator + voiceText + suffix + afterText;
-            
-            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition, 
-                       isCompleteSentence ? "(完整句子，添加换行)" : "(非完整句子)",
-                       voiceText.includes('\n') ? "(包含长句换行)" : "",
-                       "最后字符:", voiceText.slice(-1));
-            
+
+            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition,
+              isCompleteSentence ? "(完整句子，添加换行)" : "(非完整句子)",
+              voiceText.includes('\n') ? "(包含长句换行)" : "",
+              "最后字符:", voiceText.slice(-1));
+
             // 更新编辑器内容
             textEditor.value = newText;
-            
+
             // 设置新的光标位置到追加文本的末尾
             // 如果是完整句子，光标应该在换行符之后
             const newCursorPosition = currentPosition + separator.length + voiceText.length + suffix.length;
             textEditor.selectionStart = newCursorPosition;
             textEditor.selectionEnd = newCursorPosition;
-            
+
             // 触发输入事件以更新应用状态
             const inputEvent = new Event('input', { bubbles: true });
             textEditor.dispatchEvent(inputEvent);
           }
         }
       }
-      
+
       // 不要在这里重置按钮状态，因为语音识别还在继续
       // setIsListening(false); // 删除这行
       setError(null);
@@ -380,7 +380,7 @@ const VoiceInputButton = ({
 
     voiceServiceRef.current.onInterimResult((text: string) => {
       console.log("🔄 临时识别结果:", text);
-      
+
       // 保存最后的临时识别结果，用于倒计时结束时的紧急保存
       if (text.trim()) {
         lastInterimResultRef.current = text.trim();
@@ -390,7 +390,7 @@ const VoiceInputButton = ({
 
     voiceServiceRef.current.onError((error: any) => {
       console.error("❌ 语音识别错误:", error);
-      
+
       // 只有严重错误才停止语音输入，临时错误不影响按钮状态
       if (error === "not-allowed" || error === "service-not-allowed") {
         setError("请允许麦克风权限");
@@ -404,14 +404,14 @@ const VoiceInputButton = ({
 
     voiceServiceRef.current.onEnd(() => {
       console.log("🔚 语音识别手动结束");
-      
+
       // 清理临时数据
       const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
       if (textEditor) {
         delete textEditor.dataset.voiceStartPosition;
         delete textEditor.dataset.voiceOriginalText;
       }
-      
+
       // 只有手动停止时才更新UI状态
       setIsListening(false);
     });
@@ -419,16 +419,16 @@ const VoiceInputButton = ({
     // 开始语音识别
     try {
       // 检查麦克风权限
-      const permission = await navigator.permissions.query({ 
-        name: "microphone" as PermissionName 
+      const permission = await navigator.permissions.query({
+        name: "microphone" as PermissionName
       });
-      
+
       if (permission.state === "denied") {
         setError("请允许麦克风权限");
         setIsConnecting(false);
         return;
       }
-      
+
       setError(null);
       console.log("🎤 开始语音识别");
 
@@ -439,7 +439,7 @@ const VoiceInputButton = ({
       setIsConnecting(false);
       setIsListening(true);
       console.log("✅ 语音服务连接成功，可以开始说话");
-            
+
     } catch (error) {
       console.error("❌ 启动语音识别失败:", error);
       setError("启动失败");
@@ -451,13 +451,13 @@ const VoiceInputButton = ({
   // 原来的切换函数改为内部使用
   const handleVoiceToggle = async () => {
     console.log("🎤 语音按钮被点击，当前状态:", isListening, "编辑模式:", isInEditMode);
-    
+
     // 如果不在编辑模式，不允许使用语音输入
     if (!isInEditMode) {
       setError("请先进入文本编辑模式");
       return;
     }
-    
+
     if (isListening) {
       // 停止录音
       handleStopRecording();
@@ -477,12 +477,12 @@ const VoiceInputButton = ({
       provider: voiceProvider,
       lang: "zh-CN",
       voiceConfig: {
-        serverUrl: "https://192.168.31.244",
+        serverUrl: "", // 使用当前页面的 origin，通过 Caddy 反向代理访问
         port: 4408,
         forceHttps: true
       }
     });
-    
+
     if (!voiceServiceRef.current.isSupported()) {
       setError("浏览器不支持语音识别");
       return;
@@ -491,69 +491,69 @@ const VoiceInputButton = ({
     // 设置语音识别回调 - 处理最终确认的句子
     voiceServiceRef.current.onResult((text: string) => {
       console.log("🎯 语音识别最终结果:", text);
-      
+
       if (text.trim()) {
         // 如果在编辑模式，追加文本到编辑器
         if (isInEditMode) {
           console.log("🎯 在编辑模式下，追加最终句子");
-          
+
           // 查找当前的文本编辑器
           const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
           if (textEditor) {
             let voiceText = text.trim();
             console.log("🎤 原始语音文本:", `"${voiceText}"`, "长度:", voiceText.length);
-            
+
             // 对长句子进行自动换行处理：每30个字符后的逗号后添加换行
             voiceText = formatLongSentence(voiceText);
-            
+
             // 获取当前光标位置，在此位置追加新句子
             const currentPosition = textEditor.selectionStart;
             const currentText = textEditor.value;
-            
+
             // 检查语音文本是否以句子结束符结尾
             const isCompleteSentence = /[。！？.!?]$/.test(voiceText);
             console.log("🔍 完整句子检测:", `"${voiceText}"`, "→", isCompleteSentence, "最后字符码:", voiceText.charCodeAt(voiceText.length - 1));
-            
+
             // 检查是否需要添加分隔符
-            const needSeparator = currentPosition > 0 && 
-                                 currentText[currentPosition - 1] !== ' ' && 
-                                 currentText[currentPosition - 1] !== '\n';
-            
+            const needSeparator = currentPosition > 0 &&
+              currentText[currentPosition - 1] !== ' ' &&
+              currentText[currentPosition - 1] !== '\n';
+
             // 根据情况选择分隔符：完整句子用换行，否则用空格
             let separator = '';
             if (needSeparator) {
               separator = ' '; // 默认用空格
             }
-            
+
             // 如果是完整句子，在末尾添加换行符
             const suffix = isCompleteSentence ? '\n' : '';
-            
+
             const beforeText = currentText.slice(0, currentPosition);
             const afterText = currentText.slice(currentPosition);
             const newText = beforeText + separator + voiceText + suffix + afterText;
-            
-            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition, 
-                       isCompleteSentence ? "(完整句子，添加换行)" : "(非完整句子)",
-                       voiceText.includes('\n') ? "(包含长句换行)" : "",
-                       "最后字符:", voiceText.slice(-1));
-            
+
+            console.log("🎯 追加句子:", `"${voiceText}"`, "到位置:", currentPosition,
+              isCompleteSentence ? "(完整句子，添加换行)" : "(非完整句子)",
+              voiceText.includes('\n') ? "(包含长句换行)" : "",
+              "最后字符:", voiceText.slice(-1));
+
             // 更新编辑器内容
             textEditor.value = newText;
-            
+
             // 设置新的光标位置到追加文本的末尾
             // 如果是完整句子，光标应该在换行符之后
             const newCursorPosition = currentPosition + separator.length + voiceText.length + suffix.length;
             textEditor.selectionStart = newCursorPosition;
             textEditor.selectionEnd = newCursorPosition;
-            
+
             // 清理任何临时数据
             delete textEditor.dataset.voiceStartPosition;
             delete textEditor.dataset.voiceOriginalText;
-            
+
             // 触发输入事件，让编辑器知道内容已更改
             const inputEvent = new Event('input', { bubbles: true });
             textEditor.dispatchEvent(inputEvent);
-            
+
             console.log("✅ 最终文本更新成功");
           } else {
             console.log("❌ 没有找到文本编辑器");
@@ -563,18 +563,18 @@ const VoiceInputButton = ({
           const currentSelectedElements = app.scene.getSelectedElements(app.state);
           const textElements = currentSelectedElements.filter(isTextElement);
           console.log("🎯 当前选中的文本元素:", textElements.length);
-          
+
           if (textElements.length > 0) {
             textElements.forEach((element) => {
               const currentText = element.originalText || element.text || "";
               const newText = currentText + (currentText ? " " : "") + text.trim();
               console.log("🎯 更新文本:", `"${currentText}"`, "->", `"${newText}"`);
-              
+
               try {
                 app.scene.mutateElement(element, {
                   originalText: newText,
                 });
-                
+
                 app.scene.triggerUpdate();
                 console.log("✅ 文本更新成功");
               } catch (error) {
@@ -586,7 +586,7 @@ const VoiceInputButton = ({
           }
         }
       }
-      
+
       // 不要在这里重置按钮状态，因为语音识别还在继续
       // setIsListening(false); // 删除这行
       setError(null);
@@ -594,7 +594,7 @@ const VoiceInputButton = ({
 
     voiceServiceRef.current.onInterimResult((text: string) => {
       console.log("🔄 临时识别结果:", text);
-      
+
       // 保存最后的临时识别结果
       if (text.trim()) {
         lastInterimResultRef.current = text.trim();
@@ -604,7 +604,7 @@ const VoiceInputButton = ({
 
     voiceServiceRef.current.onError((error: any) => {
       console.error("❌ 语音识别错误:", error);
-      
+
       // 只有严重错误才停止语音输入，临时错误不影响按钮状态
       if (error === "not-allowed" || error === "service-not-allowed") {
         setError("请允许麦克风权限");
@@ -618,14 +618,14 @@ const VoiceInputButton = ({
 
     voiceServiceRef.current.onEnd(() => {
       console.log("🔚 语音识别手动结束");
-      
+
       // 清理临时数据
       const textEditor = document.querySelector('.excalidraw-textEditorContainer textarea') as HTMLTextAreaElement;
       if (textEditor) {
         delete textEditor.dataset.voiceStartPosition;
         delete textEditor.dataset.voiceOriginalText;
       }
-      
+
       // 只有手动停止时才更新UI状态
       setIsListening(false);
     });
@@ -633,20 +633,20 @@ const VoiceInputButton = ({
     // 开始语音识别
     try {
       // 检查麦克风权限
-      const permission = await navigator.permissions.query({ 
-        name: "microphone" as PermissionName 
+      const permission = await navigator.permissions.query({
+        name: "microphone" as PermissionName
       });
-      
+
       if (permission.state === "denied") {
         setError("请允许麦克风权限");
         return;
       }
-      
+
       setError(null);
       setIsListening(true);
       console.log("🎤 开始语音识别");
       voiceServiceRef.current.start();
-      
+
     } catch (error) {
       console.error("❌ 启动语音识别失败:", error);
       setError("启动失败");
@@ -655,20 +655,20 @@ const VoiceInputButton = ({
   };
 
   return (
-    <div style={{ 
-      padding: "4px", 
-      backgroundColor: isListening ? "#fef2f2" : "#f9fafb", 
-      border: `1px solid ${isListening ? "#ef4444" : "#d1d5db"}`, 
+    <div style={{
+      padding: "4px",
+      backgroundColor: isListening ? "#fef2f2" : "#f9fafb",
+      border: `1px solid ${isListening ? "#ef4444" : "#d1d5db"}`,
       borderRadius: "4px",
       margin: "4px 0"
     }}>
       {/* 语音服务提供商选择器 */}
       <div style={{ marginBottom: "8px" }}>
-        <label style={{ 
-          fontSize: "10px", 
-          color: "#6b7280", 
-          display: "block", 
-          marginBottom: "2px" 
+        <label style={{
+          fontSize: "10px",
+          color: "#6b7280",
+          display: "block",
+          marginBottom: "2px"
         }}>
           语音服务:
         </label>
@@ -694,11 +694,11 @@ const VoiceInputButton = ({
       {/* 语言选择器 - 仅在阿里云服务时显示 */}
       {voiceProvider === "aliyun" && (
         <div style={{ marginBottom: "8px" }}>
-          <label style={{ 
-            fontSize: "10px", 
-            color: "#6b7280", 
-            display: "block", 
-            marginBottom: "2px" 
+          <label style={{
+            fontSize: "10px",
+            color: "#6b7280",
+            display: "block",
+            marginBottom: "2px"
           }}>
             识别语言:
           </label>
@@ -708,10 +708,10 @@ const VoiceInputButton = ({
               { code: "en", name: "英语" },
               { code: "ja", name: "日语" }
             ].map((lang) => (
-              <label key={lang.code} style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                fontSize: "9px", 
+              <label key={lang.code} style={{
+                display: "flex",
+                alignItems: "center",
+                fontSize: "9px",
                 color: "#6b7280",
                 cursor: isListening ? "not-allowed" : "pointer"
               }}>
@@ -726,8 +726,8 @@ const VoiceInputButton = ({
                     }
                   }}
                   disabled={isListening}
-                  style={{ 
-                    marginRight: "3px", 
+                  style={{
+                    marginRight: "3px",
                     transform: "scale(0.8)",
                     cursor: isListening ? "not-allowed" : "pointer"
                   }}
@@ -738,7 +738,7 @@ const VoiceInputButton = ({
           </div>
         </div>
       )}
-      
+
       <button
         onMouseDown={handleVoiceStart}
         onMouseUp={handleVoiceStop}
@@ -766,9 +766,9 @@ const VoiceInputButton = ({
         style={{
           background: isConnecting
             ? "linear-gradient(45deg, #fbbf24, #f59e0b)"  // 连接中：黄色渐变
-            : isListening 
+            : isListening
               ? "#ef4444"   // 录音中：红色
-              : isInEditMode 
+              : isInEditMode
                 ? "#6b7280"  // 准备：灰色
                 : "#9ca3af", // 禁用：浅灰
           color: "white",
@@ -794,10 +794,10 @@ const VoiceInputButton = ({
         title={
           isConnecting
             ? "正在连接语音服务..."
-            : isListening 
-              ? "松开停止录音" 
-              : !isInEditMode 
-                ? "请先进入文本编辑模式" 
+            : isListening
+              ? "松开停止录音"
+              : !isInEditMode
+                ? "请先进入文本编辑模式"
                 : "按住开始录音"
         }
       >
@@ -805,21 +805,21 @@ const VoiceInputButton = ({
         <span>
           {isConnecting
             ? "连接中..."
-            : isListening 
-              ? "录音中..." 
-              : isInEditMode 
-                ? "语音输入" 
+            : isListening
+              ? "录音中..."
+              : isInEditMode
+                ? "语音输入"
                 : "语音输入(禁用)"
           }
         </span>
       </button>
-      
+
       {error && (
-        <div style={{ 
-          fontSize: "10px", 
-          color: "#ef4444", 
-          marginTop: "2px", 
-          textAlign: "center" 
+        <div style={{
+          fontSize: "10px",
+          color: "#ef4444",
+          marginTop: "2px",
+          textAlign: "center"
         }}>
           {error}
         </div>
@@ -901,46 +901,46 @@ export const SelectedShapeActions = ({
 
       {(hasStrokeStyle(appState.activeTool.type) ||
         targetElements.some((element) => hasStrokeStyle(element.type))) && (
-        <>
-          {renderAction("changeStrokeStyle")}
-          {renderAction("changeSloppiness")}
-        </>
-      )}
+          <>
+            {renderAction("changeStrokeStyle")}
+            {renderAction("changeSloppiness")}
+          </>
+        )}
 
       {(canChangeRoundness(appState.activeTool.type) ||
         targetElements.some((element) => canChangeRoundness(element.type))) && (
-        <>{renderAction("changeRoundness")}</>
-      )}
+          <>{renderAction("changeRoundness")}</>
+        )}
 
       {(toolIsArrow(appState.activeTool.type) ||
         targetElements.some((element) => toolIsArrow(element.type))) && (
-        <>{renderAction("changeArrowType")}</>
-      )}
+          <>{renderAction("changeArrowType")}</>
+        )}
 
       {(appState.activeTool.type === "text" ||
         targetElements.some(isTextElement)) && (
-        <>
-          {renderAction("changeFontFamily")}
-          {renderAction("changeFontSize")}
-          {(appState.activeTool.type === "text" ||
-            suppportsHorizontalAlign(targetElements, elementsMap)) &&
-            renderAction("changeTextAlign")}
-          
-          {/* 语音输入按钮 - 只在有文本元素时显示 */}
-          <VoiceInputButton 
-            targetElements={targetElements}
-            app={app}
-            isInEditMode={appState.editingTextElement !== null}
-          />
-        </>
-      )}
+          <>
+            {renderAction("changeFontFamily")}
+            {renderAction("changeFontSize")}
+            {(appState.activeTool.type === "text" ||
+              suppportsHorizontalAlign(targetElements, elementsMap)) &&
+              renderAction("changeTextAlign")}
+
+            {/* 语音输入按钮 - 只在有文本元素时显示 */}
+            <VoiceInputButton
+              targetElements={targetElements}
+              app={app}
+              isInEditMode={appState.editingTextElement !== null}
+            />
+          </>
+        )}
 
       {shouldAllowVerticalAlign(targetElements, elementsMap) &&
         renderAction("changeVerticalAlign")}
       {(canHaveArrowheads(appState.activeTool.type) ||
         targetElements.some((element) => canHaveArrowheads(element.type))) && (
-        <>{renderAction("changeArrowhead")}</>
-      )}
+          <>{renderAction("changeArrowhead")}</>
+        )}
 
       {renderAction("changeOpacity")}
 
@@ -1084,7 +1084,7 @@ const CombinedShapeProperties = ({
             className={PROPERTIES_CLASSES}
             container={container}
             style={{ maxWidth: "13rem" }}
-            onClose={() => {}}
+            onClose={() => { }}
           >
             <div className="selected-shape-actions">
               {showFillIcons && renderAction("changeFillStyle")}
@@ -1097,11 +1097,11 @@ const CombinedShapeProperties = ({
                 targetElements.some((element) =>
                   hasStrokeStyle(element.type),
                 )) && (
-                <>
-                  {renderAction("changeStrokeStyle")}
-                  {renderAction("changeSloppiness")}
-                </>
-              )}
+                  <>
+                    {renderAction("changeStrokeStyle")}
+                    {renderAction("changeSloppiness")}
+                  </>
+                )}
               {(canChangeRoundness(appState.activeTool.type) ||
                 targetElements.some((element) =>
                   canChangeRoundness(element.type),
@@ -1178,8 +1178,8 @@ const CombinedArrowProperties = ({
                     return element.elbowed
                       ? "elbow"
                       : element.roundness
-                      ? "round"
-                      : "sharp";
+                        ? "round"
+                        : "sharp";
                   }
                   return null;
                 },
@@ -1203,7 +1203,7 @@ const CombinedArrowProperties = ({
             container={container}
             className="properties-content"
             style={{ maxWidth: "13rem" }}
-            onClose={() => {}}
+            onClose={() => { }}
           >
             {renderAction("changeArrowProperties")}
           </PropertiesPopover>
@@ -1387,7 +1387,7 @@ const CombinedExtraActions = ({
               justifyContent: "center",
               alignItems: "center",
             }}
-            onClose={() => {}}
+            onClose={() => { }}
           >
             <div className="selected-shape-actions">
               <fieldset>
@@ -1551,20 +1551,20 @@ export const CompactShapeActions = ({
       {/* Text Properties */}
       {(appState.activeTool.type === "text" ||
         targetElements.some(isTextElement)) && (
-        <>
-          <div className="compact-action-item">
-            {renderAction("changeFontFamily")}
-          </div>
-          <CombinedTextProperties
-            appState={appState}
-            renderAction={renderAction}
-            setAppState={setAppState}
-            targetElements={targetElements}
-            container={container}
-            elementsMap={elementsMap}
-          />
-        </>
-      )}
+          <>
+            <div className="compact-action-item">
+              {renderAction("changeFontFamily")}
+            </div>
+            <CombinedTextProperties
+              appState={appState}
+              renderAction={renderAction}
+              setAppState={setAppState}
+              targetElements={targetElements}
+              container={container}
+              elementsMap={elementsMap}
+            />
+          </>
+        )}
 
       {/* Dedicated Copy Button */}
       {!isEditingTextOrNewElement && targetElements.length > 0 && (
@@ -1686,20 +1686,20 @@ export const MobileShapeActions = ({
         {/* Text Properties */}
         {(appState.activeTool.type === "text" ||
           targetElements.some(isTextElement)) && (
-          <>
-            <div className="compact-action-item">
-              {renderAction("changeFontFamily")}
-            </div>
-            <CombinedTextProperties
-              appState={appState}
-              renderAction={renderAction}
-              setAppState={setAppState}
-              targetElements={targetElements}
-              container={container}
-              elementsMap={elementsMap}
-            />
-          </>
-        )}
+            <>
+              <div className="compact-action-item">
+                {renderAction("changeFontFamily")}
+              </div>
+              <CombinedTextProperties
+                appState={appState}
+                renderAction={renderAction}
+                setAppState={setAppState}
+                targetElements={targetElements}
+                container={container}
+                elementsMap={elementsMap}
+              />
+            </>
+          )}
 
         {/* Combined Other Actions */}
         <CombinedExtraActions
@@ -1780,10 +1780,10 @@ export const ShapesSwitcher = ({
         ({ value, icon, key, numericKey, fillable }, index) => {
           if (
             UIOptions.tools?.[
-              value as Extract<
-                typeof value,
-                keyof AppProps["UIOptions"]["tools"]
-              >
+            value as Extract<
+              typeof value,
+              keyof AppProps["UIOptions"]["tools"]
+            >
             ] === false
           ) {
             return null;
@@ -1895,12 +1895,12 @@ export const ShapesSwitcher = ({
           {frameToolSelected
             ? frameToolIcon
             : embeddableToolSelected
-            ? EmbedIcon
-            : laserToolSelected && !app.props.isCollaborating
-            ? laserPointerToolIcon
-            : lassoToolSelected
-            ? LassoIcon
-            : extraToolsIcon}
+              ? EmbedIcon
+              : laserToolSelected && !app.props.isCollaborating
+                ? laserPointerToolIcon
+                : lassoToolSelected
+                  ? LassoIcon
+                  : extraToolsIcon}
         </DropdownMenu.Trigger>
         <DropdownMenu.Content
           onClickOutside={() => setIsExtraToolsMenuOpen(false)}
