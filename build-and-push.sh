@@ -14,7 +14,7 @@ echo ""
 # 配置（替换为你的阿里云镜像仓库地址）
 REGISTRY="crpi-2f6gob7gaag7gqlq.cn-guangzhou.personal.cr.aliyuncs.com"
 NAMESPACE="excalidraw-plus"  # 替换为你的命名空间
-VERSION="v1.0.1"
+VERSION="v1.0.2"
 
 # 完整镜像名称
 FRONTEND_IMAGE="$REGISTRY/$NAMESPACE/excalidraw-plus-frontend:$VERSION"
